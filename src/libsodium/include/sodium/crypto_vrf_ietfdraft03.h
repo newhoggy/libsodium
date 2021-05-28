@@ -81,11 +81,6 @@ SODIUM_EXPORT
 int crypto_vrf_ietfdraft03_prove(unsigned char *proof, const unsigned char *sk,
 				 const unsigned char *m,
 				 unsigned long long mlen);
-// for op
-SODIUM_EXPORT
-int crypto_vrf_ietfdraft03_prove_opt(unsigned char *proof, const unsigned char *sk,
-                                 const unsigned char *m,
-                                 unsigned long long mlen);
 
 // Verify a VRF proof (for a given a public key and message) and validate the
 // public key.

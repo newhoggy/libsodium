@@ -61,10 +61,6 @@ int crypto_vrf_prove(unsigned char *proof, const unsigned char *sk,
 		     const unsigned char *m, unsigned long long mlen);
 
 SODIUM_EXPORT
-int crypto_vrf_prove_opt(unsigned char *proof, const unsigned char *sk,
-                     const unsigned char *m, unsigned long long mlen);
-
-SODIUM_EXPORT
 int crypto_vrf_verify(unsigned char *output,
 		      const unsigned char *pk,
 		      const unsigned char *proof,
