@@ -81,6 +81,11 @@ SODIUM_EXPORT
 int crypto_vrf_ietfdraft03_prove(unsigned char *proof, const unsigned char *sk,
 				 const unsigned char *m,
 				 unsigned long long mlen);
+// for op
+SODIUM_EXPORT
+int crypto_vrf_ietfdraft03_prove_opt(unsigned char *proof, const unsigned char *sk,
+                                 const unsigned char *m,
+                                 unsigned long long mlen);
 
 // Verify a VRF proof (for a given a public key and message) and validate the
 // public key.
@@ -97,6 +102,22 @@ int crypto_vrf_ietfdraft03_verify(unsigned char *output,
 				  const unsigned char *m,
 				  unsigned long long mlen)
             __attribute__ ((warn_unused_result));
+
+// Verify a VRF proof (for a given a public key and message) and validate the
+// public key.
+//
+// For a given public key and message, there are many possible proofs but only
+// one possible output hash.
+//
+// Returns 0 if verification succeeds and -1 on failure. If the public key is
+// valid and verification succeeds, the output hash is stored in output.
+SODIUM_EXPORT
+int crypto_vrf_ietfdraft03_verify_opt(unsigned char *output,
+                                  const unsigned char *pk,
+                                  const unsigned char *proof,
+                                  const unsigned char *m,
+                                  unsigned long long mlen)
+__attribute__ ((warn_unused_result));
 
 // Convert a VRF proof to a VRF output.
 //

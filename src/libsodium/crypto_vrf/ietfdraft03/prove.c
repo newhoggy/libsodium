@@ -136,7 +136,7 @@ vrf_prove_opt(unsigned char pi[80], const ge25519_p3 *Y_point,
 {
     /* c fits in 16 bytes, but we store it in a 32-byte array because
      * sc25519_muladd expects a 32-byte scalar */
-    unsigned char h_string[32], k_scalar[32], c_scalar[32], kB_p2_point[32];
+    unsigned char h_string[32], k_scalar[32], c_scalar[32], kB_p2_point[32], kH_p2_point[32];
     ge25519_p3    H_point, Gamma_point, kB_point, kH_point;
 
     _vrf_ietfdraft03_hash_to_curve_elligator2_25519(h_string, Y_point, alpha, alphalen);
@@ -150,7 +150,18 @@ vrf_prove_opt(unsigned char pi[80], const ge25519_p3 *Y_point,
     /* c = ECVRF_hash_points(h, gamma, k*B, k*H)
      * (writes only to the first 16 bytes of c_scalar */
     ge25519_p3_tobytes(kB_p2_point, &kB_point);
-    _vrf_ietfdraft03_hash_points(c_scalar, &H_point, &Gamma_point, &kB_p2_point, &kH_point);
+    ge25519_p3_tobytes(kH_p2_point, &kH_point);
+
+    printf("First point:\n");
+    for (int i = 0; i < 32; i++) {
+        printf("%c", kB_p2_point[i]);
+    }
+    printf("\nSecond point:\n");
+    for (int i = 0; i < 32; i++) {
+        printf("%c", kH_p2_point[i]);
+    }
+    printf("\n");
+    _vrf_ietfdraft03_hash_points_opt(c_scalar, &H_point, &Gamma_point, &kB_p2_point, &kH_p2_point);
     memset(c_scalar+16, 0, 16); /* zero the remaining 16 bytes of c_scalar */
 
     /* output pi */
@@ -195,6 +206,29 @@ crypto_vrf_ietfdraft03_prove(unsigned char proof[crypto_vrf_ietfdraft03_PROOFBYT
 	return -1;
     }
     vrf_prove(proof, &Y_point, x_scalar, truncated_hashed_sk_string, msg, msglen);
+    sodium_memzero(x_scalar, 32);
+    sodium_memzero(truncated_hashed_sk_string, 32);
+    sodium_memzero(&Y_point, sizeof Y_point); /* for good measure */
+    return 0;
+}
+
+// for opts
+int
+crypto_vrf_ietfdraft03_prove_opt(unsigned char proof[crypto_vrf_ietfdraft03_PROOFBYTES],
+                             const unsigned char skpk[crypto_vrf_ietfdraft03_SECRETKEYBYTES],
+                             const unsigned char *msg,
+                             unsigned long long msglen)
+{
+    ge25519_p3    Y_point;
+    unsigned char x_scalar[32], truncated_hashed_sk_string[32];
+
+    if (vrf_expand_sk(&Y_point, x_scalar, truncated_hashed_sk_string, skpk) != 0) {
+        sodium_memzero(x_scalar, 32);
+        sodium_memzero(truncated_hashed_sk_string, 32);
+        sodium_memzero(&Y_point, sizeof Y_point); /* for good measure */
+        return -1;
+    }
+    vrf_prove_opt(proof, &Y_point, x_scalar, truncated_hashed_sk_string, msg, msglen);
     sodium_memzero(x_scalar, 32);
     sodium_memzero(truncated_hashed_sk_string, 32);
     sodium_memzero(&Y_point, sizeof Y_point); /* for good measure */

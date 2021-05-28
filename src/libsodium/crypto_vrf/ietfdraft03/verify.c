@@ -243,7 +243,7 @@ vrf_verify_optimised(const ge25519_p3 *Y_point, const unsigned char pi[80],
     ge25519_double_scalarmult_vartime(&U_point, cn_scalar, Y_point, s_scalar);
 
     /* calculate V = s*H -  c*Gamma */
-    ge25519_double_scalarmult_vartime_variable(&V_point, cn_scalar, &Y_point, s_scalar, &H_point);
+    ge25519_double_scalarmult_vartime_variable(&V_point, cn_scalar, &Gamma_point, s_scalar, &H_point);
 
     t_scalar_normal = clock() - t_scalar_normal;
     double time_scalar_normal = ((double)t_scalar_normal)/CLOCKS_PER_SEC;
@@ -251,6 +251,16 @@ vrf_verify_optimised(const ge25519_p3 *Y_point, const unsigned char pi[80],
 
     ge25519_tobytes(U_bytes, &U_point);
     ge25519_tobytes(V_bytes, &V_point);
+
+    printf("First point (verif):\n");
+    for (int i = 0; i < 32; i++) {
+        printf("%c", U_bytes[i]);
+    }
+    printf("\nSecond point (verif):\n");
+    for (int i = 0; i < 32; i++) {
+        printf("%c", V_bytes[i]);
+    }
+    printf("\n");
     clock_t t_final;
     t_final = clock();
     _vrf_ietfdraft03_hash_points_opt(cprime, &H_point, &Gamma_point, &U_bytes, &V_bytes);
@@ -279,6 +289,31 @@ crypto_vrf_ietfdraft03_verify(unsigned char output[crypto_vrf_ietfdraft03_OUTPUT
     ge25519_p3 Y;
     if ((vrf_validate_key(&Y, pk) == 0) && (vrf_verify(&Y, proof, msg, msglen) == 0)) {
 	return crypto_vrf_ietfdraft03_proof_to_hash(output, proof);
+    } else {
+        return -1;
+    }
+}
+
+/* Verify a VRF proof (for a given a public key and message) and validate the
+ * public key. If verification succeeds, store the VRF output hash in output[].
+ * Specified in draft spec section 5.3. Used for the comparison of the
+ * possibly optimised version
+ *
+ * For a given public key and message, there are many possible proofs but only
+ * one possible output hash.
+ *
+ * Returns 0 if verification succeeds (and stores output hash in output[]),
+ * nonzero on failure.
+ */
+int
+crypto_vrf_ietfdraft03_verify_opt(unsigned char output[crypto_vrf_ietfdraft03_OUTPUTBYTES],
+                              const unsigned char pk[crypto_vrf_ietfdraft03_PUBLICKEYBYTES],
+                              const unsigned char proof[crypto_vrf_ietfdraft03_PROOFBYTES],
+                              const unsigned char *msg, const unsigned long long msglen)
+{
+    ge25519_p3 Y;
+    if ((vrf_validate_key(&Y, pk) == 0) && (vrf_verify_optimised(&Y, proof, msg, msglen) == 0)) {
+        return crypto_vrf_ietfdraft03_proof_to_hash(output, proof);
     } else {
         return -1;
     }
