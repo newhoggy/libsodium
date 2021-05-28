@@ -106,6 +106,27 @@ _vrf_ietfdraft03_hash_points(unsigned char c[16], const ge25519_p3 *P1,
     sodium_memzero(c1, 64);
 }
 
+/* Subroutine specified in draft spec section 5.4.3.
+ * Hashes four points to a 16-byte string.
+ * Constant time. For optimised calls*/
+void
+_vrf_ietfdraft03_hash_points_opt(unsigned char c[16], const ge25519_p3 *P1,
+                             const ge25519_p3 *P2, unsigned char P3[32],
+                             unsigned char P4[32])
+{
+    unsigned char str[2+32*4], c1[64];
+
+    str[0] = SUITE;
+    str[1] = TWO;
+    _vrf_ietfdraft03_point_to_string(str+2+32*0, P1);
+    _vrf_ietfdraft03_point_to_string(str+2+32*1, P2);
+    memmove(str+2+32*2, P3, 32); //todo: check
+    memmove(str+2+32*3, P4, 32);
+    crypto_hash_sha512(c1, str, sizeof str);
+    memmove(c, c1, 16);
+    sodium_memzero(c1, 64);
+}
+
 /* Decode an 80-byte proof pi into a point gamma, a 16-byte scalar c, and a
  * 32-byte scalar s, as specified in IETF draft section 5.4.4.
  * Returns 0 on success, nonzero on failure.

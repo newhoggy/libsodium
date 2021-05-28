@@ -42,6 +42,10 @@ void _vrf_ietfdraft03_hash_to_curve_elligator2_25519(unsigned char H_string[32],
 
 void _vrf_ietfdraft03_hash_points(unsigned char c[16], const ge25519_p3 *P1,
 				  const ge25519_p3 *P2, const ge25519_p3 *P3,
-				  const ge25519_p3 *P4);
+                                  const ge25519_p3 *P4);
+
+void _vrf_ietfdraft03_hash_points_opt(unsigned char c[16], const ge25519_p3 *P1,
+                                  const ge25519_p3 *P2, unsigned char P3[32],
+                                  unsigned char P4[32]);
 
 #endif

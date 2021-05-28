@@ -755,6 +755,133 @@ ge25519_double_scalarmult_vartime(ge25519_p2 *r, const unsigned char *a,
 }
 
 /*
+ Variable time double scalar multiplication with variable bases
+ r = a * A + b * B
+ where a = a[0]+256*a[1]+...+256^31 a[31].
+ and b = b[0]+256*b[1]+...+256^31 b[31].
+
+ Only used for VRF verification.
+ */
+
+void
+ge25519_double_scalarmult_vartime_variable(ge25519_p2 *r, const unsigned char *a,
+                                  const ge25519_p3 *A, const unsigned char *b, const ge25519_p3 *B)
+{
+    signed char    aslide[256];
+    signed char    bslide[256];
+    ge25519_cached Ai[8]; /* A,3A,5A,7A,9A,11A,13A,15A */
+    ge25519_cached Bi[8]; /* B,3B,5B,7B,9B,11B,13B,15B */
+    ge25519_p1p1   t;
+//    ge25519_p1p1   t_b;
+    ge25519_p3     u;
+//    ge25519_p3     u_b;
+    ge25519_p3     A2;
+    ge25519_p3     B2;
+    int            i;
+
+    slide_vartime(aslide, a);
+    slide_vartime(bslide, b);
+
+    // Precomputation of values of A
+    ge25519_p3_to_cached(&Ai[0], A);
+
+    ge25519_p3_dbl(&t, A);
+    ge25519_p1p1_to_p3(&A2, &t);
+
+    ge25519_add(&t, &A2, &Ai[0]);
+    ge25519_p1p1_to_p3(&u, &t);
+    ge25519_p3_to_cached(&Ai[1], &u);
+
+    ge25519_add(&t, &A2, &Ai[1]);
+    ge25519_p1p1_to_p3(&u, &t);
+    ge25519_p3_to_cached(&Ai[2], &u);
+
+    ge25519_add(&t, &A2, &Ai[2]);
+    ge25519_p1p1_to_p3(&u, &t);
+    ge25519_p3_to_cached(&Ai[3], &u);
+
+    ge25519_add(&t, &A2, &Ai[3]);
+    ge25519_p1p1_to_p3(&u, &t);
+    ge25519_p3_to_cached(&Ai[4], &u);
+
+    ge25519_add(&t, &A2, &Ai[4]);
+    ge25519_p1p1_to_p3(&u, &t);
+    ge25519_p3_to_cached(&Ai[5], &u);
+
+    ge25519_add(&t, &A2, &Ai[5]);
+    ge25519_p1p1_to_p3(&u, &t);
+    ge25519_p3_to_cached(&Ai[6], &u);
+
+    ge25519_add(&t, &A2, &Ai[6]);
+    ge25519_p1p1_to_p3(&u, &t);
+    ge25519_p3_to_cached(&Ai[7], &u);
+
+    // Precomputation of values of B
+    ge25519_p3_to_cached(&Bi[0], B);
+
+    ge25519_p3_dbl(&t, B);
+    ge25519_p1p1_to_p3(&B2, &t);
+
+    ge25519_add(&t, &B2, &Bi[0]);
+    ge25519_p1p1_to_p3(&u, &t);
+    ge25519_p3_to_cached(&Bi[1], &u);
+
+    ge25519_add(&t, &B2, &Bi[1]);
+    ge25519_p1p1_to_p3(&u, &t);
+    ge25519_p3_to_cached(&Bi[2], &u);
+
+    ge25519_add(&t, &B2, &Bi[2]);
+    ge25519_p1p1_to_p3(&u, &t);
+    ge25519_p3_to_cached(&Bi[3], &u);
+
+    ge25519_add(&t, &B2, &Bi[3]);
+    ge25519_p1p1_to_p3(&u, &t);
+    ge25519_p3_to_cached(&Bi[4], &u);
+
+    ge25519_add(&t, &B2, &Bi[4]);
+    ge25519_p1p1_to_p3(&u, &t);
+    ge25519_p3_to_cached(&Bi[5], &u);
+
+    ge25519_add(&t, &B2, &Bi[5]);
+    ge25519_p1p1_to_p3(&u, &t);
+    ge25519_p3_to_cached(&Bi[6], &u);
+
+    ge25519_add(&t, &B2, &Bi[6]);
+    ge25519_p1p1_to_p3(&u, &t);
+    ge25519_p3_to_cached(&Bi[7], &u);
+
+    ge25519_p2_0(r);
+
+    for (i = 255; i >= 0; --i) {
+        if (aslide[i] || bslide[i]) {
+            break;
+        }
+    }
+
+    for (; i >= 0; --i) {
+        ge25519_p2_dbl(&t, r);
+
+        if (aslide[i] > 0) {
+            ge25519_p1p1_to_p3(&u, &t);
+            ge25519_add(&t, &u, &Ai[aslide[i] / 2]);
+        } else if (aslide[i] < 0) {
+            ge25519_p1p1_to_p3(&u, &t);
+            ge25519_sub(&t, &u, &Ai[(-aslide[i]) / 2]);
+        }
+
+        if (bslide[i] > 0) {
+            ge25519_p1p1_to_p3(&u, &t);
+            ge25519_add(&t, &u, &Bi[bslide[i] / 2]);
+        } else if (bslide[i] < 0) {
+            ge25519_p1p1_to_p3(&u, &t);
+            ge25519_sub(&t, &u, &Bi[(-bslide[i]) / 2]);
+        }
+
+        ge25519_p1p1_to_p2(r, &t);
+    }
+}
+
+/*
  h = a * p
  where a = a[0]+256*a[1]+...+256^31 a[31]
 

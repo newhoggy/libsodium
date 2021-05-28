@@ -51,7 +51,7 @@ _crypto_sign_ed25519_verify_detached(const unsigned char *sig,
     sc25519_reduce(h);
 
     ge25519_double_scalarmult_vartime(&R, h, &A, sig + 32);
-    ge25519_tobytes(rcheck, &R);
+        ge25519_tobytes(rcheck, &R);
 
     return crypto_verify_32(rcheck, sig) | (-(rcheck == sig)) |
            sodium_memcmp(sig, rcheck, 32);

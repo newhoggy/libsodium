@@ -21,6 +21,7 @@ SOFTWARE.
 */
 
 #include <string.h>
+#include <time.h>
 
 #include "crypto_hash_sha512.h"
 #include "crypto_verify_16.h"
@@ -114,6 +115,9 @@ static int
 vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[80],
 	   const unsigned char *alpha, const unsigned long long alphalen)
 {
+    clock_t t_initialisation;
+    t_initialisation = clock();
+
     /* Note: c fits in 16 bytes, but ge25519_scalarmult expects a 32-byte scalar.
      * Similarly, s_scalar fits in 32 bytes but sc25519_reduce takes in 64 bytes. */
     unsigned char h_string[32], c_scalar[32], s_scalar[64], cprime[16];
@@ -125,6 +129,9 @@ vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[80],
     if (_vrf_ietfdraft03_decode_proof(&Gamma_point, c_scalar, s_scalar, pi) != 0) {
 	return -1;
     }
+    t_initialisation = clock() - t_initialisation;
+    double time_init = ((double)t_initialisation)/CLOCKS_PER_SEC;
+    printf("Running time of initialisation: %f\n", time_init);
     /* vrf_decode_proof writes to the first 16 bytes of c_scalar; we zero the
      * second 16 bytes ourselves, as ge25519_scalarmult expects a 32-byte scalar.
      */
@@ -138,7 +145,17 @@ vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[80],
     memset(s_scalar+32, 0, 32);
     sc25519_reduce(s_scalar);
 
+    clock_t t_elligator;
+    t_elligator = clock();
+
     _vrf_ietfdraft03_hash_to_curve_elligator2_25519(h_string, Y_point, alpha, alphalen);
+
+    t_elligator = clock() - t_elligator;
+    double time_elligator = ((double)t_elligator)/CLOCKS_PER_SEC;
+    printf("Running time elligator: %f\n", time_elligator);
+
+    clock_t t_scalar_normal;
+    t_scalar_normal = clock();
     ge25519_frombytes(&H_point, h_string);
 
     /* calculate U = s*B - c*Y */
@@ -155,7 +172,91 @@ vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[80],
     ge25519_sub(&tmp_p1p1_point, &tmp_p3_point, &tmp_cached_point); /* tmp_p1p1 = tmp_p3 - tmp_cached = s*H - c*Gamma */
     ge25519_p1p1_to_p3(&V_point, &tmp_p1p1_point); /* V = s*H - c*Gamma */
 
+    t_scalar_normal = clock() - t_scalar_normal;
+    double time_scalar_normal = ((double)t_scalar_normal)/CLOCKS_PER_SEC;
+    printf("Running time of scarlar ops: %f\n", time_scalar_normal);
+
+    clock_t t_final;
+    t_final = clock();
     _vrf_ietfdraft03_hash_points(cprime, &H_point, &Gamma_point, &U_point, &V_point);
+    t_final = clock() - t_final;
+    double time_final = ((double)t_final)/CLOCKS_PER_SEC;
+    printf("hash points (except for crypto_verify_16): %f\n", time_final);
+    return crypto_verify_16(c_scalar, cprime);
+}
+
+/* Verify a proof per draft section 5.3. Return 0 on success, -1 on failure.
+ * We assume Y_point has passed public key validation already.
+ * Assuming verification succeeds, runtime does not depend on the message alpha
+ * (but does depend on its length alphalen)
+ */
+static int
+vrf_verify_optimised(const ge25519_p3 *Y_point, const unsigned char pi[80],
+           const unsigned char *alpha, const unsigned long long alphalen)
+{
+    clock_t t_initialisation;
+    t_initialisation = clock();
+
+    /* Note: c fits in 16 bytes, but ge25519_scalarmult expects a 32-byte scalar.
+     * Similarly, s_scalar fits in 32 bytes but sc25519_reduce takes in 64 bytes. */
+    unsigned char h_string[32], cn_scalar[32], c_scalar[32], s_scalar[64], cprime[16], U_bytes[32], V_bytes[32];
+
+    ge25519_p2               U_point, V_point;
+    ge25519_p3     H_point, Gamma_point, tmp_p3_point;
+    ge25519_p1p1   tmp_p1p1_point;
+    ge25519_cached tmp_cached_point;
+
+    if (_vrf_ietfdraft03_decode_proof(&Gamma_point, c_scalar, s_scalar, pi) != 0) {
+        return -1;
+    }
+    t_initialisation = clock() - t_initialisation;
+    double time_init = ((double)t_initialisation)/CLOCKS_PER_SEC;
+    printf("Running time of initialisation: %f\n", time_init);
+    /* vrf_decode_proof writes to the first 16 bytes of c_scalar; we zero the
+     * second 16 bytes ourselves, as ge25519_scalarmult expects a 32-byte scalar.
+     */
+    memset(c_scalar+16, 0, 16);
+
+    /* vrf_decode_proof sets only the first 32 bytes of s_scalar; we zero the
+     * second 32 bytes ourselves, as sc25519_reduce expects a 64-byte scalar.
+     * Reducing the scalar s mod q ensures the high order bit of s is 0, which
+     * ref10's scalarmult functions require.
+     */
+    memset(s_scalar+32, 0, 32);
+    sc25519_reduce(s_scalar);
+
+    clock_t t_elligator;
+    t_elligator = clock();
+
+    _vrf_ietfdraft03_hash_to_curve_elligator2_25519(h_string, Y_point, alpha, alphalen);
+
+    t_elligator = clock() - t_elligator;
+    double time_elligator = ((double)t_elligator)/CLOCKS_PER_SEC;
+    printf("Running time elligator: %f\n", time_elligator);
+
+    clock_t t_scalar_normal;
+    t_scalar_normal = clock();
+    ge25519_frombytes(&H_point, h_string);
+    crypto_core_ed25519_scalar_negate(cn_scalar, c_scalar); /* negate scalar c--attention here, as it might give error */
+
+    /* calculate U = s*B - c*Y */
+    ge25519_double_scalarmult_vartime(&U_point, cn_scalar, Y_point, s_scalar);
+
+    /* calculate V = s*H -  c*Gamma */
+    ge25519_double_scalarmult_vartime_variable(&V_point, cn_scalar, &Y_point, s_scalar, &H_point);
+
+    t_scalar_normal = clock() - t_scalar_normal;
+    double time_scalar_normal = ((double)t_scalar_normal)/CLOCKS_PER_SEC;
+    printf("Running time of scarlar ops vartime: %f\n", time_scalar_normal);
+
+    ge25519_tobytes(U_bytes, &U_point);
+    ge25519_tobytes(V_bytes, &V_point);
+    clock_t t_final;
+    t_final = clock();
+    _vrf_ietfdraft03_hash_points_opt(cprime, &H_point, &Gamma_point, &U_bytes, &V_bytes);
+    t_final = clock() - t_final;
+    double time_final = ((double)t_final)/CLOCKS_PER_SEC;
+    printf("hash points (except for crypto_verify_16): %f\n", time_final);
     return crypto_verify_16(c_scalar, cprime);
 }
 

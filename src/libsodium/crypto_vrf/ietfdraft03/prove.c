@@ -121,6 +121,53 @@ vrf_prove(unsigned char pi[80], const ge25519_p3 *Y_point,
     sodium_memzero(&kH_point, sizeof kH_point);
 }
 
+/* Construct a proof for a message alpha per draft spec section 5.1.
+ * Takes in a secret scalar x, a public point Y, and a secret string
+ * truncated_hashed_sk that is used in nonce generation.
+ * These are computed from the secret key using the expand_sk function.
+ * Constant time in everything except alphalen (the length of the message).
+ * Used for the optimised version---breaking changes, as the hashed values are different.
+ */
+static void
+vrf_prove_opt(unsigned char pi[80], const ge25519_p3 *Y_point,
+          const unsigned char x_scalar[32],
+          const unsigned char truncated_hashed_sk_string[32],
+          const unsigned char *alpha, unsigned long long alphalen)
+{
+    /* c fits in 16 bytes, but we store it in a 32-byte array because
+     * sc25519_muladd expects a 32-byte scalar */
+    unsigned char h_string[32], k_scalar[32], c_scalar[32], kB_p2_point[32];
+    ge25519_p3    H_point, Gamma_point, kB_point, kH_point;
+
+    _vrf_ietfdraft03_hash_to_curve_elligator2_25519(h_string, Y_point, alpha, alphalen);
+    ge25519_frombytes(&H_point, h_string);
+
+    ge25519_scalarmult(&Gamma_point, x_scalar, &H_point); /* Gamma = x*H */
+    vrf_nonce_generation(k_scalar, truncated_hashed_sk_string, h_string);
+    ge25519_scalarmult_base(&kB_point, k_scalar); /* compute k*B */
+    ge25519_scalarmult(&kH_point, k_scalar, &H_point); /* compute k*H */
+
+    /* c = ECVRF_hash_points(h, gamma, k*B, k*H)
+     * (writes only to the first 16 bytes of c_scalar */
+    ge25519_p3_tobytes(kB_p2_point, &kB_point);
+    _vrf_ietfdraft03_hash_points(c_scalar, &H_point, &Gamma_point, &kB_p2_point, &kH_point);
+    memset(c_scalar+16, 0, 16); /* zero the remaining 16 bytes of c_scalar */
+
+    /* output pi */
+    _vrf_ietfdraft03_point_to_string(pi, &Gamma_point); /* pi[0:32] = point_to_string(Gamma) */
+    memmove(pi+32, c_scalar, 16); /* pi[32:48] = c (16 bytes) */
+    sc25519_muladd(pi+48, c_scalar, x_scalar, k_scalar); /* pi[48:80] = s = c*x + k (mod q) */
+
+    sodium_memzero(k_scalar, sizeof k_scalar); /* k must remain secret */
+    /* erase other non-sensitive intermediate state for good measure */
+    sodium_memzero(h_string, sizeof h_string);
+    sodium_memzero(c_scalar, sizeof c_scalar);
+    sodium_memzero(&H_point, sizeof H_point);
+    sodium_memzero(&Gamma_point, sizeof Gamma_point);
+    sodium_memzero(&kB_point, sizeof kB_point);
+    sodium_memzero(&kH_point, sizeof kH_point);
+}
+
 /* Construct a VRF proof given a secret key and a message.
  *
  * The "secret key" is 64 bytes long -- 32 byte secret seed concatenated
