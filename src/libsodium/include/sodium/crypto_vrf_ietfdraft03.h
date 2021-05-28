@@ -119,6 +119,13 @@ int crypto_vrf_ietfdraft03_verify_opt(unsigned char *output,
                                   unsigned long long mlen)
 __attribute__ ((warn_unused_result));
 
+SODIUM_EXPORT
+int running_times_scalar_ops(double *old_times, double *opt_times, unsigned char output[crypto_vrf_ietfdraft03_OUTPUTBYTES],
+                             const unsigned char pk[crypto_vrf_ietfdraft03_PUBLICKEYBYTES],
+                             const unsigned char proof[crypto_vrf_ietfdraft03_PROOFBYTES],
+                             const unsigned char *msg, const unsigned long long msglen)
+                                  __attribute__ ((warn_unused_result));
+
 // Convert a VRF proof to a VRF output.
 //
 // This function does not verify the proof.

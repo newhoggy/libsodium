@@ -152,15 +152,6 @@ vrf_prove_opt(unsigned char pi[80], const ge25519_p3 *Y_point,
     ge25519_p3_tobytes(kB_p2_point, &kB_point);
     ge25519_p3_tobytes(kH_p2_point, &kH_point);
 
-    printf("First point:\n");
-    for (int i = 0; i < 32; i++) {
-        printf("%c", kB_p2_point[i]);
-    }
-    printf("\nSecond point:\n");
-    for (int i = 0; i < 32; i++) {
-        printf("%c", kH_p2_point[i]);
-    }
-    printf("\n");
     _vrf_ietfdraft03_hash_points_opt(c_scalar, &H_point, &Gamma_point, &kB_p2_point, &kH_p2_point);
     memset(c_scalar+16, 0, 16); /* zero the remaining 16 bytes of c_scalar */
 
