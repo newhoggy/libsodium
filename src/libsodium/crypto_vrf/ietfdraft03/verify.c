@@ -264,7 +264,8 @@ crypto_vrf_ietfdraft03_verify_opt(unsigned char output[crypto_vrf_ietfdraft03_OU
     }
 }
 
-int running_times_scalar_ops(double *old_times, double *opt_times, unsigned char output[crypto_vrf_ietfdraft03_OUTPUTBYTES],
+/* used simply to perform testing of operations */
+void running_times_scalar_ops(double *old_times, double *opt_times, unsigned char output[crypto_vrf_ietfdraft03_OUTPUTBYTES],
                              const unsigned char pk[crypto_vrf_ietfdraft03_PUBLICKEYBYTES],
                              const unsigned char proof[crypto_vrf_ietfdraft03_PROOFBYTES],
                              const unsigned char *msg, const unsigned long long msglen)
@@ -280,9 +281,7 @@ int running_times_scalar_ops(double *old_times, double *opt_times, unsigned char
     ge25519_p1p1   tmp_p1p1_point;
     ge25519_cached tmp_cached_point;
 
-    if (_vrf_ietfdraft03_decode_proof(&Gamma_point, c_scalar, s_scalar, proof) != 0) {
-        return -1;
-    }
+    _vrf_ietfdraft03_decode_proof(&Gamma_point, c_scalar, s_scalar, proof);
     /* vrf_decode_proof writes to the first 16 bytes of c_scalar; we zero the
      * second 16 bytes ourselves, as ge25519_scalarmult expects a 32-byte scalar.
      */
@@ -320,11 +319,11 @@ int running_times_scalar_ops(double *old_times, double *opt_times, unsigned char
     t_scalar = clock() - t_scalar;
     *old_times = ((double)t_scalar)/CLOCKS_PER_SEC;
 
-    crypto_core_ed25519_scalar_negate(cn_scalar, c_scalar); /* negate scalar c--attention here, as it might give error */
 
     clock_t t_opt;
     t_opt = clock();
 
+    crypto_core_ed25519_scalar_negate(cn_scalar, c_scalar); /* negate scalar c--attention here, as it might give error */
     /* calculate U = s*B - c*Y */
     ge25519_double_scalarmult_vartime(&U_point, c_scalar, &Y, s_scalar);
 
@@ -333,5 +332,4 @@ int running_times_scalar_ops(double *old_times, double *opt_times, unsigned char
 
     t_opt = clock() - t_opt;
     *opt_times = ((double)t_opt)/CLOCKS_PER_SEC;
-    return 0;
 }
