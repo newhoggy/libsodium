@@ -145,7 +145,7 @@ vrf_prove_try_inc(unsigned char pi[80], const ge25519_p3 *Y_point,
     ge25519_scalarmult(&kH_point, k_scalar, &H_point); /* compute k*H */
     unsigned char kh_bytes[32];
     ge25519_p3_tobytes(kh_bytes, &kH_point);
-    printf("kh_point prove: ");
+    printf("kh_point prove: "); //this
     for (int i = 0; i < 32; i++) {
         printf("%c", kh_bytes[i]);
     }

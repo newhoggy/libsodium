@@ -238,7 +238,7 @@ vrf_verify_try_inc(const ge25519_p3 *Y_point, const unsigned char pi[80],
     ge25519_p1p1_to_p3(&V_point, &tmp_p1p1_point); /* V = s*H - c*Gamma */
     unsigned char v_bytes[32];
     ge25519_p3_tobytes(v_bytes, &V_point);
-    printf("v_point verif: ");
+    printf("v_point verif: "); // this
     for (int i = 0; i < 32; i++) {
         printf("%c", v_bytes[i]);
     }
