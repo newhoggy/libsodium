@@ -169,6 +169,96 @@ vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[80],
  * (but does depend on its length alphalen)
  */
 static int
+vrf_verify_try_inc(const ge25519_p3 *Y_point, const unsigned char pi[80],
+                     const unsigned char *alpha, const unsigned long long alphalen)
+{
+    /* Note: c fits in 16 bytes, but ge25519_scalarmult expects a 32-byte scalar.
+     * Similarly, s_scalar fits in 32 bytes but sc25519_reduce takes in 64 bytes. */
+    unsigned char h_string[32], c_scalar[32], s_scalar[64], cprime[16];
+
+    ge25519_p3     H_point, Gamma_point, U_point, V_point, tmp_p3_point;
+    ge25519_p1p1   tmp_p1p1_point;
+    ge25519_cached tmp_cached_point;
+
+    if (_vrf_ietfdraft03_decode_proof(&Gamma_point, c_scalar, s_scalar, pi) != 0) {
+        return -1;
+    }
+    printf("s_scalar verif: ");
+    for (int i = 0; i < 64; i++) {
+        printf("%c", s_scalar[i]);
+    }
+    printf("\n");
+    printf("c_scalar verif: ");
+    for (int i = 0; i < 32; i++) {
+        printf("%c", c_scalar[i]);
+    }
+    printf("\n");
+    /* vrf_decode_proof writes to the first 16 bytes of c_scalar; we zero the
+     * second 16 bytes ourselves, as ge25519_scalarmult expects a 32-byte scalar.
+     */
+    memset(c_scalar+16, 0, 16);
+
+    /* vrf_decode_proof sets only the first 32 bytes of s_scalar; we zero the
+     * second 32 bytes ourselves, as sc25519_reduce expects a 64-byte scalar.
+     * Reducing the scalar s mod q ensures the high order bit of s is 0, which
+     * ref10's scalarmult functions require.
+     */
+    memset(s_scalar+32, 0, 32);
+    sc25519_reduce(s_scalar);
+
+    _vrf_ietfdraft03_hash_to_curve_try_inc(h_string, Y_point, alpha, alphalen);
+    printf("h_string verif: ");
+    for (int i = 0; i < 32; i++) {
+        printf("%c", h_string[i]);
+    }
+    printf("\n");
+
+    ge25519_frombytes(&H_point, h_string);
+
+    /* calculate U = s*B - c*Y */
+    ge25519_scalarmult(&tmp_p3_point, c_scalar, Y_point); /* tmp_p3 = c*Y */
+    ge25519_p3_to_cached(&tmp_cached_point, &tmp_p3_point); /* tmp_cached = c*Y */
+    ge25519_scalarmult_base(&tmp_p3_point, s_scalar); /* tmp_p3 = s*B */
+    ge25519_sub(&tmp_p1p1_point, &tmp_p3_point, &tmp_cached_point); /* tmp_p1p1 = tmp_p3 - tmp_cached = s*B - c*Y */
+    ge25519_p1p1_to_p3(&U_point, &tmp_p1p1_point); /* U = s*B - c*Y */
+    unsigned char u_bytes[32];
+    ge25519_p3_tobytes(u_bytes, &U_point);
+    printf("u_point verif: ");
+    for (int i = 0; i < 32; i++) {
+        printf("%c", u_bytes[i]);
+    }
+    printf("\n");
+
+
+    /* calculate V = s*H -  c*Gamma */
+    ge25519_scalarmult(&tmp_p3_point, c_scalar, &Gamma_point); /* tmp_p3 = c*Gamma */
+    ge25519_p3_to_cached(&tmp_cached_point, &tmp_p3_point); /* tmp_cached = c*Gamma */
+    ge25519_scalarmult(&tmp_p3_point, s_scalar, &H_point); /* tmp_p3 = s*H */
+    ge25519_sub(&tmp_p1p1_point, &tmp_p3_point, &tmp_cached_point); /* tmp_p1p1 = tmp_p3 - tmp_cached = s*H - c*Gamma */
+    ge25519_p1p1_to_p3(&V_point, &tmp_p1p1_point); /* V = s*H - c*Gamma */
+    unsigned char v_bytes[32];
+    ge25519_p3_tobytes(v_bytes, &V_point);
+    printf("v_point verif: ");
+    for (int i = 0; i < 32; i++) {
+        printf("%c", v_bytes[i]);
+    }
+    printf("\n");
+
+    _vrf_ietfdraft03_hash_points(cprime, &H_point, &Gamma_point, &U_point, &V_point);
+    printf("cprime: ");
+    for (int i = 0; i<16; i++) {
+        printf("%c == %c\n", c_scalar[i], cprime[i]);
+    }
+    printf("\n");
+    return crypto_verify_16(c_scalar, cprime);
+}
+
+/* Verify a proof per draft section 5.3. Return 0 on success, -1 on failure.
+ * We assume Y_point has passed public key validation already.
+ * Assuming verification succeeds, runtime does not depend on the message alpha
+ * (but does depend on its length alphalen)
+ */
+static int
 vrf_verify_optimised(const ge25519_p3 *Y_point, const unsigned char pi[80],
            const unsigned char *alpha, const unsigned long long alphalen)
 {
@@ -258,6 +348,23 @@ crypto_vrf_ietfdraft03_verify_opt(unsigned char output[crypto_vrf_ietfdraft03_OU
 {
     ge25519_p3 Y;
     if ((vrf_validate_key(&Y, pk) == 0) && (vrf_verify_optimised(&Y, proof, msg, msglen) == 0)) {
+        return crypto_vrf_ietfdraft03_proof_to_hash(output, proof);
+    } else {
+        return -1;
+    }
+}
+
+/*
+ * vrf verification with try and increment (needs the proving function to have the same properties)
+ */
+int
+crypto_vrf_ietfdraft03_verify_try_inc(unsigned char output[crypto_vrf_ietfdraft03_OUTPUTBYTES],
+                                  const unsigned char pk[crypto_vrf_ietfdraft03_PUBLICKEYBYTES],
+                                  const unsigned char proof[crypto_vrf_ietfdraft03_PROOFBYTES],
+                                  const unsigned char *msg, const unsigned long long msglen)
+{
+    ge25519_p3 Y;
+    if ((vrf_validate_key(&Y, pk) == 0) && (vrf_verify_try_inc(&Y, proof, msg, msglen) == 0)) {
         return crypto_vrf_ietfdraft03_proof_to_hash(output, proof);
     } else {
         return -1;

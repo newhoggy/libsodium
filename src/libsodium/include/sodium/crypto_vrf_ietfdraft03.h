@@ -83,18 +83,15 @@ int crypto_vrf_ietfdraft03_prove(unsigned char *proof, const unsigned char *sk,
 				 unsigned long long mlen);
 
 SODIUM_EXPORT
+int crypto_vrf_ietfdraft03_prove_try_inc(unsigned char *proof, const unsigned char *sk,
+                                 const unsigned char *m,
+                                 unsigned long long mlen);
+
+SODIUM_EXPORT
 int api_scalarmul(unsigned char *point, const unsigned char *scalar);
 
 SODIUM_EXPORT
 int internal_scalarmul(unsigned char *point, const unsigned char *scalar);
-
-SODIUM_EXPORT
-int prepare_sig_and_pk(
-        unsigned char *ge25519_pk,
-        unsigned char *ge25519_announcement,
-        unsigned char *ristretto255_pk,
-        unsigned char *ristretto255_announcement
-);
 
 // Verify a VRF proof (for a given a public key and message) and validate the
 // public key.
@@ -127,6 +124,14 @@ int crypto_vrf_ietfdraft03_verify_opt(unsigned char *output,
                                   const unsigned char *m,
                                   unsigned long long mlen)
 __attribute__ ((warn_unused_result));
+
+// Verify a VRF proof using `try_and_increment` instead of elligator.
+SODIUM_EXPORT
+int
+crypto_vrf_ietfdraft03_verify_try_inc(unsigned char output[crypto_vrf_ietfdraft03_OUTPUTBYTES],
+                                      const unsigned char pk[crypto_vrf_ietfdraft03_PUBLICKEYBYTES],
+                                      const unsigned char proof[crypto_vrf_ietfdraft03_PROOFBYTES],
+                                      const unsigned char *msg, const unsigned long long msglen);
 
 SODIUM_EXPORT
 void running_times_scalar_ops(double *old_times, double *opt_times, unsigned char output[crypto_vrf_ietfdraft03_OUTPUTBYTES],

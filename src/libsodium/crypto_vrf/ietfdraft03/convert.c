@@ -85,6 +85,41 @@ _vrf_ietfdraft03_hash_to_curve_elligator2_25519(unsigned char H_string[32],
     ge25519_from_uniform(H_string, r_string); /* elligator2 */
 }
 
+/*
+ * Computing the `hash_to_curve` using try and increment
+ */
+void
+_vrf_ietfdraft03_hash_to_curve_try_inc(unsigned char H_string[32],
+                                       const ge25519_p3 *Y_point,
+                                       const unsigned char *alpha,
+                                       const unsigned long long alphalen)
+{
+    crypto_hash_sha512_state hs;
+    unsigned char            Y_string[32], r_string[64];
+
+    _vrf_ietfdraft03_point_to_string(Y_string, Y_point);
+
+    crypto_hash_sha512_init(&hs);
+    crypto_hash_sha512_update(&hs, &SUITE, 1);
+    crypto_hash_sha512_update(&hs, &ONE, 1);
+    crypto_hash_sha512_update(&hs, Y_string, 32);
+    crypto_hash_sha512_update(&hs, alpha, alphalen);
+
+    ge25519_p3 p3;
+    int check = 1;
+    unsigned char value = ONE;
+    while (check != 0) {
+        /* r = first 32 bytes of SHA512(suite || 0x01 || Y || alpha) */
+        crypto_hash_sha512_update(&hs, &value, 1);
+        crypto_hash_sha512_final(&hs, r_string);
+        r_string[31] &= 0x7f; /* clear sign bit */
+        value += value;
+        check = ge25519_frombytes(&p3, r_string);
+    }
+    ge25519_p3_tobytes(H_string, &p3);
+}
+
+
 /* Subroutine specified in draft spec section 5.4.3.
  * Hashes four points to a 16-byte string.
  * Constant time. */

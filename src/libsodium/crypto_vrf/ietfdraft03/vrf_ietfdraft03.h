@@ -25,6 +25,7 @@ SOFTWARE.
 
 static const unsigned char SUITE = 0x04; /* ECVRF-ED25519-SHA512-Elligator2 */
 
+
 void _vrf_ietfdraft03_point_to_string(unsigned char string[32],
 				      const ge25519_p3 *point);
 
@@ -39,6 +40,11 @@ void _vrf_ietfdraft03_hash_to_curve_elligator2_25519(unsigned char H_string[32],
 						     const ge25519_p3 *Y_point,
 						     const unsigned char *alpha,
 						     const unsigned long long alphalen);
+
+void _vrf_ietfdraft03_hash_to_curve_try_inc(unsigned char H_string[32],
+									   const ge25519_p3 *Y_point,
+									   const unsigned char *alpha,
+									   const unsigned long long alphalen);
 
 void _vrf_ietfdraft03_hash_points(unsigned char c[16], const ge25519_p3 *P1,
 				  const ge25519_p3 *P2, const ge25519_p3 *P3,
