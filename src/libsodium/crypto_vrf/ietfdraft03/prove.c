@@ -76,6 +76,41 @@ vrf_nonce_generation(unsigned char k_scalar[32],
     sodium_memzero(k_string, sizeof k_string);
 }
 
+int api_scalarmul(unsigned char *point, const unsigned char *scalar) {
+    unsigned char result[32];
+    crypto_scalarmult_ed25519(result, scalar, point);
+
+    return 0;
+}
+
+int internal_scalarmul(unsigned char *point, const unsigned char *scalar) {
+    ge25519_p3 result, point_in;
+    ge25519_frombytes(&point_in, point);
+    ge25519_scalarmult(&result, scalar, point);
+
+    return 0;
+}
+
+int prepare_sig_and_pk(
+        unsigned char *ge25519_pk,
+        unsigned char *ge25519_announcement,
+        unsigned char *ristretto255_pk,
+        unsigned char *ristretto255_announcement
+) {
+    ge25519_p3     Pk;
+    ge25519_p3     Announcement;
+    if (ristretto255_frombytes(&Pk, ristretto255_pk) != 0) {
+        return -1;
+    }
+    if (ristretto255_frombytes(&Announcement, ristretto255_announcement) != 0) {
+        return -1;
+    }
+    ge25519_p3_tobytes(ge25519_pk, &Pk);
+    ge25519_p3_tobytes(ge25519_announcement, &Announcement);
+
+    return 0;
+}
+
 /* Construct a proof for a message alpha per draft spec section 5.1.
  * Takes in a secret scalar x, a public point Y, and a secret string
  * truncated_hashed_sk that is used in nonce generation.

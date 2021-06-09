@@ -82,6 +82,20 @@ int crypto_vrf_ietfdraft03_prove(unsigned char *proof, const unsigned char *sk,
 				 const unsigned char *m,
 				 unsigned long long mlen);
 
+SODIUM_EXPORT
+int api_scalarmul(unsigned char *point, const unsigned char *scalar);
+
+SODIUM_EXPORT
+int internal_scalarmul(unsigned char *point, const unsigned char *scalar);
+
+SODIUM_EXPORT
+int prepare_sig_and_pk(
+        unsigned char *ge25519_pk,
+        unsigned char *ge25519_announcement,
+        unsigned char *ristretto255_pk,
+        unsigned char *ristretto255_announcement
+);
+
 // Verify a VRF proof (for a given a public key and message) and validate the
 // public key.
 //
