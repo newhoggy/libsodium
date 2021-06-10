@@ -50,6 +50,14 @@ SODIUM_EXPORT
 const char *crypto_sign_primitive(void);
 
 SODIUM_EXPORT
+int prepare_sig_and_pk(
+        unsigned char *ge25519_pk,
+        unsigned char *ge25519_announcement,
+        unsigned char *ristretto255_pk,
+        unsigned char *ristretto255_announcement
+);
+
+SODIUM_EXPORT
 int crypto_sign_seed_keypair(unsigned char *pk, unsigned char *sk,
                              const unsigned char *seed)
             __attribute__ ((nonnull));

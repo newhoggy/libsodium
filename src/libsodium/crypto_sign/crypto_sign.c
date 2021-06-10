@@ -113,3 +113,12 @@ crypto_sign_final_verify(crypto_sign_state *state, const unsigned char *sig,
 {
     return crypto_sign_ed25519ph_final_verify(state, sig, pk);
 }
+
+int prepare_sig_and_pk(
+        unsigned char *ge25519_pk,
+        unsigned char *ge25519_announcement,
+        unsigned char *ristretto255_pk,
+        unsigned char *ristretto255_announcement
+) {
+    crypto_sign_ed25519_prepare_sig_and_pk(ge25519_pk, ge25519_announcement, ristretto255_pk, ristretto255_announcement);
+}

@@ -54,6 +54,26 @@ _crypto_sign_ed25519_verify_detached(const unsigned char *sig,
            sodium_memcmp(sig, rcheck, 32);
 }
 
+int crypto_sign_ed25519_prepare_sig_and_pk(
+        unsigned char *ge25519_pk,
+        unsigned char *ge25519_announcement,
+        unsigned char *ristretto255_pk,
+        unsigned char *ristretto255_announcement) {
+
+    ge25519_p3     Pk;
+    ge25519_p3     Announcement;
+    if (ristretto255_frombytes(&Pk, ristretto255_pk) != 0) {
+    return -1;
+    }
+    if (ristretto255_frombytes(&Announcement, ristretto255_announcement) != 0) {
+    return -1;
+    }
+    ge25519_p3_tobytes(ge25519_pk, &Pk);
+    ge25519_p3_tobytes(ge25519_announcement, &Announcement);
+
+    return 0;
+}
+
 int
 crypto_sign_ed25519_verify_detached(const unsigned char *sig,
                                     const unsigned char *m,
