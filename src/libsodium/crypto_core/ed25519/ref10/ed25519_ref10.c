@@ -1007,6 +1007,30 @@ ge25519_mul_l(ge25519_p3 *r, const ge25519_p3 *A)
     }
 }
 
+/* multiply by torsion-safe repr, mainly t = 3l + 1.
+ * t = 1 mod l, and t = 0 mod 8.
+ *
+ */
+void mul_torsion_safe(unsigned char *r, const unsigned char *A) {
+    ge25519_p3     res, torsion_safe_p3;
+    ge25519_p3     A_p3, u;
+    ge25519_cached res_cach;
+    ge25519_p1p1   res_dbl, A_3l, torsion_safe;
+
+    ge25519_frombytes(&A_p3, A);
+    ge25519_mul_l(&res, &A_p3);
+    ge25519_p3_dbl(&res_dbl, &res);
+    ge25519_p1p1_to_p3(&u, &res_dbl);
+    ge25519_p3_to_cached(&res_cach, &u);
+    ge25519_add(&A_3l, &res, &res_cach);
+    ge25519_p1p1_to_p3(&u, &A_3l);
+    ge25519_p3_to_cached(&res_cach, &u);
+    ge25519_add(&torsion_safe, &A_p3, &res_cach);
+    ge25519_p1p1_to_p3(&torsion_safe_p3, &torsion_safe);
+
+    ge25519_p3_tobytes(r, &torsion_safe_p3);
+}
+
 int
 ge25519_is_on_curve(const ge25519_p3 *p)
 {

@@ -29,6 +29,9 @@ SODIUM_EXPORT
 size_t crypto_core_ed25519_nonreducedscalarbytes(void);
 
 SODIUM_EXPORT
+void mul_torsion_safe_scalar(unsigned char *r, const unsigned char *A);
+
+SODIUM_EXPORT
 int crypto_core_ed25519_is_valid_point(const unsigned char *p)
             __attribute__ ((nonnull));
 

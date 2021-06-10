@@ -7,6 +7,11 @@
 #include "randombytes.h"
 #include "utils.h"
 
+void
+mul_torsion_safe_scalar(unsigned char *r, const unsigned char *A) {
+    mul_torsion_safe(r, A);
+}
+
 int
 crypto_core_ed25519_is_valid_point(const unsigned char *p)
 {
