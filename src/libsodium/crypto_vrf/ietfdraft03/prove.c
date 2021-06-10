@@ -91,26 +91,6 @@ int internal_scalarmul(unsigned char *point, const unsigned char *scalar) {
     return 0;
 }
 
-int prepare_sig_and_pk(
-        unsigned char *ge25519_pk,
-        unsigned char *ge25519_announcement,
-        unsigned char *ristretto255_pk,
-        unsigned char *ristretto255_announcement
-) {
-    ge25519_p3     Pk;
-    ge25519_p3     Announcement;
-    if (ristretto255_frombytes(&Pk, ristretto255_pk) != 0) {
-        return -1;
-    }
-    if (ristretto255_frombytes(&Announcement, ristretto255_announcement) != 0) {
-        return -1;
-    }
-    ge25519_p3_tobytes(ge25519_pk, &Pk);
-    ge25519_p3_tobytes(ge25519_announcement, &Announcement);
-
-    return 0;
-}
-
 /* Construct a proof for a message using try and increment
  */
 static void
@@ -125,31 +105,12 @@ vrf_prove_try_inc(unsigned char pi[80], const ge25519_p3 *Y_point,
     ge25519_p3    H_point, Gamma_point, kB_point, kH_point;
 
     _vrf_ietfdraft03_hash_to_curve_try_inc(h_string, Y_point, alpha, alphalen);
-    printf("h_string prove: ");
-    for (int i = 0; i < 32; i++) {
-        printf("%c", h_string[i]);
-    }
-    printf("\n");
     ge25519_frombytes(&H_point, h_string);
 
     ge25519_scalarmult(&Gamma_point, x_scalar, &H_point); /* Gamma = x*H */
     vrf_nonce_generation(k_scalar, truncated_hashed_sk_string, h_string);
     ge25519_scalarmult_base(&kB_point, k_scalar); /* compute k*B */
-    unsigned char kb_bytes[32];
-    ge25519_p3_tobytes(kb_bytes, &kB_point);
-    printf("kB_point prove: ");
-    for (int i = 0; i < 32; i++) {
-        printf("%c", kb_bytes[i]);
-    }
-    printf("\n");
     ge25519_scalarmult(&kH_point, k_scalar, &H_point); /* compute k*H */
-    unsigned char kh_bytes[32];
-    ge25519_p3_tobytes(kh_bytes, &kH_point);
-    printf("kh_point prove: "); //this
-    for (int i = 0; i < 32; i++) {
-        printf("%c", kh_bytes[i]);
-    }
-    printf("\n");
 
     /* c = ECVRF_hash_points(h, gamma, k*B, k*H)
      * (writes only to the first 16 bytes of c_scalar */
@@ -160,17 +121,6 @@ vrf_prove_try_inc(unsigned char pi[80], const ge25519_p3 *Y_point,
     _vrf_ietfdraft03_point_to_string(pi, &Gamma_point); /* pi[0:32] = point_to_string(Gamma) */
     memmove(pi+32, c_scalar, 16); /* pi[32:48] = c (16 bytes) */
     sc25519_muladd(pi+48, c_scalar, x_scalar, k_scalar); /* pi[48:80] = s = c*x + k (mod q) */
-
-    printf("s_scalar prove: ");
-    for (int i = 0; i < 32; i++) {
-        printf("%c", pi[48 + i]);
-    }
-    printf("\n");
-    printf("c_scalar prove: ");
-    for (int i = 0; i < 16; i++) {
-        printf("%c", pi[32 + i]);
-    }
-    printf("\n");
 
     sodium_memzero(k_scalar, sizeof k_scalar); /* k must remain secret */
     /* erase other non-sensitive intermediate state for good measure */

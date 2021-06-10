@@ -183,16 +183,6 @@ vrf_verify_try_inc(const ge25519_p3 *Y_point, const unsigned char pi[80],
     if (_vrf_ietfdraft03_decode_proof(&Gamma_point, c_scalar, s_scalar, pi) != 0) {
         return -1;
     }
-    printf("s_scalar verif: ");
-    for (int i = 0; i < 64; i++) {
-        printf("%c", s_scalar[i]);
-    }
-    printf("\n");
-    printf("c_scalar verif: ");
-    for (int i = 0; i < 32; i++) {
-        printf("%c", c_scalar[i]);
-    }
-    printf("\n");
     /* vrf_decode_proof writes to the first 16 bytes of c_scalar; we zero the
      * second 16 bytes ourselves, as ge25519_scalarmult expects a 32-byte scalar.
      */
@@ -207,12 +197,6 @@ vrf_verify_try_inc(const ge25519_p3 *Y_point, const unsigned char pi[80],
     sc25519_reduce(s_scalar);
 
     _vrf_ietfdraft03_hash_to_curve_try_inc(h_string, Y_point, alpha, alphalen);
-    printf("h_string verif: ");
-    for (int i = 0; i < 32; i++) {
-        printf("%c", h_string[i]);
-    }
-    printf("\n");
-
     ge25519_frombytes(&H_point, h_string);
 
     /* calculate U = s*B - c*Y */
@@ -221,14 +205,6 @@ vrf_verify_try_inc(const ge25519_p3 *Y_point, const unsigned char pi[80],
     ge25519_scalarmult_base(&tmp_p3_point, s_scalar); /* tmp_p3 = s*B */
     ge25519_sub(&tmp_p1p1_point, &tmp_p3_point, &tmp_cached_point); /* tmp_p1p1 = tmp_p3 - tmp_cached = s*B - c*Y */
     ge25519_p1p1_to_p3(&U_point, &tmp_p1p1_point); /* U = s*B - c*Y */
-    unsigned char u_bytes[32];
-    ge25519_p3_tobytes(u_bytes, &U_point);
-    printf("u_point verif: ");
-    for (int i = 0; i < 32; i++) {
-        printf("%c", u_bytes[i]);
-    }
-    printf("\n");
-
 
     /* calculate V = s*H -  c*Gamma */
     ge25519_scalarmult(&tmp_p3_point, c_scalar, &Gamma_point); /* tmp_p3 = c*Gamma */
@@ -236,20 +212,8 @@ vrf_verify_try_inc(const ge25519_p3 *Y_point, const unsigned char pi[80],
     ge25519_scalarmult(&tmp_p3_point, s_scalar, &H_point); /* tmp_p3 = s*H */
     ge25519_sub(&tmp_p1p1_point, &tmp_p3_point, &tmp_cached_point); /* tmp_p1p1 = tmp_p3 - tmp_cached = s*H - c*Gamma */
     ge25519_p1p1_to_p3(&V_point, &tmp_p1p1_point); /* V = s*H - c*Gamma */
-    unsigned char v_bytes[32];
-    ge25519_p3_tobytes(v_bytes, &V_point);
-    printf("v_point verif: "); // this
-    for (int i = 0; i < 32; i++) {
-        printf("%c", v_bytes[i]);
-    }
-    printf("\n");
 
     _vrf_ietfdraft03_hash_points(cprime, &H_point, &Gamma_point, &U_point, &V_point);
-    printf("cprime: ");
-    for (int i = 0; i<16; i++) {
-        printf("%c == %c\n", c_scalar[i], cprime[i]);
-    }
-    printf("\n");
     return crypto_verify_16(c_scalar, cprime);
 }
 

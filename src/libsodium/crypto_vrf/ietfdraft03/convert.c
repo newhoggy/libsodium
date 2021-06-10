@@ -85,6 +85,14 @@ _vrf_ietfdraft03_hash_to_curve_elligator2_25519(unsigned char H_string[32],
     ge25519_from_uniform(H_string, r_string); /* elligator2 */
 }
 
+int is_valid(ge25519_p3 *p_p3, const unsigned char *r_string) {
+    if (ge25519_frombytes(p_p3, r_string) != 0 ||
+        ge25519_is_on_main_subgroup(p_p3) == 0) {
+        return 0;
+    }
+    return 1;
+}
+
 /*
  * Computing the `hash_to_curve` using try and increment
  */
@@ -114,9 +122,7 @@ _vrf_ietfdraft03_hash_to_curve_try_inc(unsigned char H_string[32],
         crypto_hash_sha512_final(&hs, r_string);
         r_string[31] &= 0x7f; /* clear sign bit */
         value += value;
-        check = crypto_core_ed25519_is_valid_point(r_string);
-        ge25519_frombytes(&p3, r_string);
-
+        check = is_valid(&p3, r_string);
     }
     ge25519_p3_tobytes(H_string, &p3);
 }
