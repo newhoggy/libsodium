@@ -79,6 +79,8 @@ void ge25519_tobytes(unsigned char *s, const ge25519_p2 *h);
 
 void ge25519_p3_tobytes(unsigned char *s, const ge25519_p3 *h);
 
+void multiply_by_cofactor(ge25519_p3 *p3);
+
 int ge25519_frombytes(ge25519_p3 *h, const unsigned char *s);
 
 int ge25519_frombytes_negate_vartime(ge25519_p3 *h, const unsigned char *s);

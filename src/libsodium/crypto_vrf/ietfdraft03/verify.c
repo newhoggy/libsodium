@@ -31,23 +31,6 @@ SOFTWARE.
 
 static const unsigned char THREE = 0x03;
 
-/* Utility function to multiply a point by the cofactor (8) in place. */
-static void
-multiply_by_cofactor(ge25519_p3 *point) {
-    ge25519_cached tmp_point;
-    ge25519_p1p1   tmp2_point;
-
-    ge25519_p3_to_cached(&tmp_point, point);     /* tmp = input */
-    ge25519_add(&tmp2_point, point, &tmp_point); /* tmp2 = 2*input */
-    ge25519_p1p1_to_p3(point, &tmp2_point);      /* point = 2*input */
-    ge25519_p3_to_cached(&tmp_point, point);     /* tmp = 2*input */
-    ge25519_add(&tmp2_point, point, &tmp_point); /* tmp2 = 4*input */
-    ge25519_p1p1_to_p3(point, &tmp2_point);      /* point = 4*input */
-    ge25519_p3_to_cached(&tmp_point, point);     /* tmp = 4*input */
-    ge25519_add(&tmp2_point, point, &tmp_point); /* tmp2 = 8*input */
-    ge25519_p1p1_to_p3(point, &tmp2_point);      /* point = 8*input */
-}
-
 /* Convert a VRF proof pi into a VRF output hash beta per draft spec section 5.2.
  * This function does not verify the proof! For an untrusted proof, instead call
  * crypto_vrf_ietfdraft03_verify, which will output the hash if verification
