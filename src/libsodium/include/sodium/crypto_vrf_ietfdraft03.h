@@ -133,12 +133,6 @@ crypto_vrf_ietfdraft03_verify_try_inc(unsigned char output[crypto_vrf_ietfdraft0
                                       const unsigned char proof[crypto_vrf_ietfdraft03_PROOFBYTES],
                                       const unsigned char *msg, const unsigned long long msglen);
 
-SODIUM_EXPORT
-void running_times_scalar_ops(double *old_times, double *opt_times, unsigned char output[crypto_vrf_ietfdraft03_OUTPUTBYTES],
-                             const unsigned char pk[crypto_vrf_ietfdraft03_PUBLICKEYBYTES],
-                             const unsigned char proof[crypto_vrf_ietfdraft03_PROOFBYTES],
-                             const unsigned char *msg, const unsigned long long msglen);
-
 // Convert a VRF proof to a VRF output.
 //
 // This function does not verify the proof.

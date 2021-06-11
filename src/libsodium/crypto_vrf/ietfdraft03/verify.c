@@ -27,6 +27,7 @@ SOFTWARE.
 #include "crypto_verify_16.h"
 #include "crypto_vrf_ietfdraft03.h"
 #include "private/ed25519_ref10.h"
+#include "crypto_core_ed25519.h"
 #include "vrf_ietfdraft03.h"
 
 static const unsigned char THREE = 0x03;
@@ -237,7 +238,7 @@ vrf_verify_optimised(const ge25519_p3 *Y_point, const unsigned char pi[80],
     _vrf_ietfdraft03_hash_to_curve_elligator2_25519(h_string, Y_point, alpha, alphalen);
 
     ge25519_frombytes(&H_point, h_string);
-    crypto_core_ed25519_scalar_negate(cn_scalar, c_scalar); /* negate scalar c--attention here, as it might give error */
+    crypto_core_ed25519_scalar_negate(cn_scalar, c_scalar); /* negate scalar c */
 
     /* calculate U = s*B - c*Y */
     ge25519_double_scalarmult_vartime(&U_point, cn_scalar, Y_point, s_scalar);
@@ -248,7 +249,7 @@ vrf_verify_optimised(const ge25519_p3 *Y_point, const unsigned char pi[80],
     ge25519_tobytes(U_bytes, &U_point);
     ge25519_tobytes(V_bytes, &V_point);
 
-    _vrf_ietfdraft03_hash_points_opt(cprime, &H_point, &Gamma_point, &U_bytes, &V_bytes);
+    _vrf_ietfdraft03_hash_points_opt(cprime, &H_point, &Gamma_point, U_bytes, V_bytes);
     return crypto_verify_16(c_scalar, cprime);
 }
 
@@ -316,74 +317,4 @@ crypto_vrf_ietfdraft03_verify_try_inc(unsigned char output[crypto_vrf_ietfdraft0
     } else {
         return -1;
     }
-}
-
-/* used simply to perform testing of operations */
-void running_times_scalar_ops(double *old_times, double *opt_times, unsigned char output[crypto_vrf_ietfdraft03_OUTPUTBYTES],
-                             const unsigned char pk[crypto_vrf_ietfdraft03_PUBLICKEYBYTES],
-                             const unsigned char proof[crypto_vrf_ietfdraft03_PROOFBYTES],
-                             const unsigned char *msg, const unsigned long long msglen)
-{
-    ge25519_p3 Y;
-    vrf_validate_key(&Y, pk);
-
-    /* Note: c fits in 16 bytes, but ge25519_scalarmult expects a 32-byte scalar.
-     * Similarly, s_scalar fits in 32 bytes but sc25519_reduce takes in 64 bytes. */
-    unsigned char h_string[32], cn_scalar[32], c_scalar[32], s_scalar[64], cprime[16];
-
-    ge25519_p3     H_point, Gamma_point, U_point, V_point, tmp_p3_point;
-    ge25519_p1p1   tmp_p1p1_point;
-    ge25519_cached tmp_cached_point;
-
-    _vrf_ietfdraft03_decode_proof(&Gamma_point, c_scalar, s_scalar, proof);
-    /* vrf_decode_proof writes to the first 16 bytes of c_scalar; we zero the
-     * second 16 bytes ourselves, as ge25519_scalarmult expects a 32-byte scalar.
-     */
-    memset(c_scalar+16, 0, 16);
-
-    /* vrf_decode_proof sets only the first 32 bytes of s_scalar; we zero the
-     * second 32 bytes ourselves, as sc25519_reduce expects a 64-byte scalar.
-     * Reducing the scalar s mod q ensures the high order bit of s is 0, which
-     * ref10's scalarmult functions require.
-     */
-    memset(s_scalar+32, 0, 32);
-    sc25519_reduce(s_scalar);
-
-    _vrf_ietfdraft03_hash_to_curve_elligator2_25519(h_string, &Y, msg, msglen);
-
-    ge25519_frombytes(&H_point, h_string);
-
-    clock_t t_scalar;
-    t_scalar = clock();
-
-    /* calculate U = s*B - c*Y */
-    ge25519_scalarmult(&tmp_p3_point, c_scalar, &Y); /* tmp_p3 = c*Y */
-    ge25519_p3_to_cached(&tmp_cached_point, &tmp_p3_point); /* tmp_cached = c*Y */
-    ge25519_scalarmult_base(&tmp_p3_point, s_scalar); /* tmp_p3 = s*B */
-    ge25519_sub(&tmp_p1p1_point, &tmp_p3_point, &tmp_cached_point); /* tmp_p1p1 = tmp_p3 - tmp_cached = s*B - c*Y */
-    ge25519_p1p1_to_p3(&U_point, &tmp_p1p1_point); /* U = s*B - c*Y */
-
-    /* calculate V = s*H -  c*Gamma */
-    ge25519_scalarmult(&tmp_p3_point, c_scalar, &Gamma_point); /* tmp_p3 = c*Gamma */
-    ge25519_p3_to_cached(&tmp_cached_point, &tmp_p3_point); /* tmp_cached = c*Gamma */
-    ge25519_scalarmult(&tmp_p3_point, s_scalar, &H_point); /* tmp_p3 = s*H */
-    ge25519_sub(&tmp_p1p1_point, &tmp_p3_point, &tmp_cached_point); /* tmp_p1p1 = tmp_p3 - tmp_cached = s*H - c*Gamma */
-    ge25519_p1p1_to_p3(&V_point, &tmp_p1p1_point);
-
-    t_scalar = clock() - t_scalar;
-    *old_times = ((double)t_scalar)/CLOCKS_PER_SEC;
-
-
-    clock_t t_opt;
-    t_opt = clock();
-
-    crypto_core_ed25519_scalar_negate(cn_scalar, c_scalar); /* negate scalar c--attention here, as it might give error */
-    /* calculate U = s*B - c*Y */
-    ge25519_double_scalarmult_vartime(&U_point, c_scalar, &Y, s_scalar);
-
-    /* calculate V = s*H -  c*Gamma */
-    ge25519_double_scalarmult_vartime_variable(&V_point, cn_scalar, &Gamma_point, s_scalar, &H_point);
-
-    t_opt = clock() - t_opt;
-    *opt_times = ((double)t_opt)/CLOCKS_PER_SEC;
 }

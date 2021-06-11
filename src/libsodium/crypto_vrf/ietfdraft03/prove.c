@@ -86,7 +86,7 @@ int api_scalarmul(unsigned char *point, const unsigned char *scalar) {
 int internal_scalarmul(unsigned char *point, const unsigned char *scalar) {
     ge25519_p3 result, point_in;
     ge25519_frombytes(&point_in, point);
-    ge25519_scalarmult(&result, scalar, point);
+    ge25519_scalarmult(&result, scalar, &point_in);
 
     return 0;
 }
