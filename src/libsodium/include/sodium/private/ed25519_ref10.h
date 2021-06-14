@@ -77,7 +77,7 @@ void ge25519_tobytes(unsigned char *s, const ge25519_p2 *h);
 
 void ge25519_p3_tobytes(unsigned char *s, const ge25519_p3 *h);
 
-void mul_torsion_safe(unsigned char *r, const unsigned char *A);
+void mul_torsion_safe(ge25519_p3 *r, const ge25519_p3 *A);
 
 int ge25519_frombytes(ge25519_p3 *h, const unsigned char *s);
 

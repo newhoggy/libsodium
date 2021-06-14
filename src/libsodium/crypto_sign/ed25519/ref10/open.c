@@ -54,22 +54,29 @@ _crypto_sign_ed25519_verify_detached(const unsigned char *sig,
            sodium_memcmp(sig, rcheck, 32);
 }
 
+/*
+ * Given a ristretto pk and signature, it returns the canonical representation (prime subgroup)
+ * of the corresponding edwards points.
+ */
 int crypto_sign_ed25519_prepare_sig_and_pk(
         unsigned char *ge25519_pk,
         unsigned char *ge25519_announcement,
         unsigned char *ristretto255_pk,
         unsigned char *ristretto255_announcement) {
 
-    ge25519_p3     Pk;
-    ge25519_p3     Announcement;
-    if (ristretto255_frombytes(&Pk, ristretto255_pk) != 0) {
+    ge25519_p3     pk, pk_torsion_safe, announcement, announcement_torsion_safe;
+    if (ristretto255_frombytes(&pk, ristretto255_pk) != 0) {
     return -1;
     }
-    if (ristretto255_frombytes(&Announcement, ristretto255_announcement) != 0) {
+    if (ristretto255_frombytes(&announcement, ristretto255_announcement) != 0) {
     return -1;
     }
-    ge25519_p3_tobytes(ge25519_pk, &Pk);
-    ge25519_p3_tobytes(ge25519_announcement, &Announcement);
+
+    mul_torsion_safe(&pk_torsion_safe, &pk);
+    mul_torsion_safe(&announcement_torsion_safe, &announcement);
+
+    ge25519_p3_tobytes(ge25519_pk, &pk_torsion_safe);
+    ge25519_p3_tobytes(ge25519_announcement, &announcement_torsion_safe);
 
     return 0;
 }
