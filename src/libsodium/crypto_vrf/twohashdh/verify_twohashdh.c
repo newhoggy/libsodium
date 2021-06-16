@@ -69,6 +69,7 @@ vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[80],
     ge25519_cached tmp_cached_point;
 
     if (_vrf_twohashdh_decode_proof(&U_point, challenge_scalar, response_scalar, pi) != 0) {
+        printf("decoding proof\n");
         return -1;
     }
     /* vrf_decode_proof writes to the first 16 bytes of c_scalar; we zero the
@@ -90,10 +91,12 @@ vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[80],
     ge25519_p3_tobytes(&Y_bytes, Y_point);
 
     if (ge25519_frombytes_negate_vartime(&pk_negate, &Y_bytes) != 0) {
+        printf("negating 1\n");
         return -1;
     }
 
     if (ge25519_frombytes_negate_vartime(&U_point_negate, pi) != 0) {
+        printf("negating 2\n");
         return -1;
     }
 
@@ -102,6 +105,7 @@ vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[80],
 
     _vrf_twohashdh_hash_points_verif(challenge_check, Y_point, &H_point, &U_point, &Announcement_one, &Announcement_two);
 
+    printf("in the comparison\n");
     return crypto_verify_32(challenge_scalar, challenge_check);
 }
 
@@ -112,6 +116,14 @@ crypto_vrf_twohashdh_verify(unsigned char output[crypto_vrf_twohashdh_OUTPUTBYTE
                               const unsigned char *msg, const unsigned long long msglen)
 {
     ge25519_p3 Y;
+    if (vrf_validate_key(&Y, pk) != 0) {
+        printf("failed with key\n");
+    }
+
+    if (vrf_verify(&Y, proof, msg, msglen) != 0) {
+        printf("failed proof\n");
+    }
+
     if ((vrf_validate_key(&Y, pk) == 0) && (vrf_verify(&Y, proof, msg, msglen) == 0)) {
         return crypto_vrf_twohashdh_proof_to_hash(output, proof, msg, msglen);
     } else {
