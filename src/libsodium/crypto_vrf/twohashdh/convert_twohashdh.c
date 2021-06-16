@@ -36,7 +36,7 @@ _vrf_twohashdh_hash_to_curve_elligator2_25519(unsigned char H_string[32],
  * Hashes four points to a 16-byte string.
  * Constant time. */
 void
-_vrf_twohashdh_hash_points(unsigned char challenge_scalar[16], const ge25519_p3 *Y_point,
+_vrf_twohashdh_hash_points(unsigned char challenge_scalar[32], const ge25519_p3 *Y_point,
                            const ge25519_p3 *H_point, const ge25519_p3 *U_point,
                            const ge25519_p3 *Announcement_one, const ge25519_p3 *Announcement_two)
 {
@@ -48,12 +48,13 @@ _vrf_twohashdh_hash_points(unsigned char challenge_scalar[16], const ge25519_p3 
     ge25519_p3_tobytes(str+32*3, Announcement_one);
     ge25519_p3_tobytes(str+32*4, Announcement_two);
     crypto_hash_sha512(c1, str, sizeof str);
-    memmove(challenge_scalar, c1, 16);
+    sc25519_reduce(c1);
+    memmove(challenge_scalar, c1, 32);
     sodium_memzero(c1, 64);
 }
 
 void
-_vrf_twohashdh_hash_points_verif(unsigned char challenge_scalar[16], const ge25519_p3 *Y_point,
+_vrf_twohashdh_hash_points_verif(unsigned char challenge_scalar[32], const ge25519_p3 *Y_point,
                         const ge25519_p3 *H_point, const ge25519_p3 *U_point,
                         const ge25519_p2 *Announcement_one, const ge25519_p2 *Announcement_two) {
     unsigned char str[32*5], c1[64];
@@ -64,7 +65,8 @@ _vrf_twohashdh_hash_points_verif(unsigned char challenge_scalar[16], const ge255
     ge25519_tobytes(str+32*3, Announcement_one);
     ge25519_tobytes(str+32*4, Announcement_two);
     crypto_hash_sha512(c1, str, sizeof str);
-    memmove(challenge_scalar, c1, 16);
+    sc25519_reduce(c1);
+    memmove(challenge_scalar, c1, 32);
     sodium_memzero(c1, 64);
 }
 

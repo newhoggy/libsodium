@@ -2,6 +2,7 @@
 
 #include "crypto_hash_sha512.h"
 #include "crypto_vrf_twohashdh.h"
+#include "crypto_core_ed25519.h"
 #include "private/ed25519_ref10.h"
 #include "utils.h"
 #include "vrf_twohashdh.h"
@@ -13,13 +14,13 @@
  * Constant time in everything except alphalen (the length of the message)
  */
 static void
-vrf_prove(unsigned char pi[80], const ge25519_p3 *Y_point,
+vrf_prove(unsigned char pi[crypto_vrf_twohashdh_OUTPUTBYTES], const ge25519_p3 *Y_point,
           const unsigned char x_scalar[32],
           const unsigned char *alpha, unsigned long long alphalen)
 {
     /* c fits in 16 bytes, but we store it in a 32-byte array because
      * sc25519_muladd expects a 32-byte scalar */
-    unsigned char h_string[32], random_proof[32], challenge_scalar[32], response_scalar[32], proof_randomness[64];
+    unsigned char h_string[32], random_proof, challenge_scalar[32], response_scalar[32], proof_randomness[64];
     ge25519_p3    H_point, U_point, Announcement_one, Announcement_two;
 
     _vrf_twohashdh_hash_to_curve_elligator2_25519(h_string, alpha, alphalen);
@@ -29,25 +30,22 @@ vrf_prove(unsigned char pi[80], const ge25519_p3 *Y_point,
 
     // Now we perform a proof of DLOG equality
     /* Announcement */
-    crypto_core_ed25519_scalar_random(random_proof[32]);
-    ge25519_scalarmult_base(&Announcement_one, random_proof);
-    ge25519_scalarmult(&Announcement_two, random_proof, &U_point);
+    crypto_core_ed25519_scalar_random(&random_proof);
+    ge25519_scalarmult_base(&Announcement_one, &random_proof);
+    ge25519_scalarmult(&Announcement_two, &random_proof, &U_point);
 
     /* challenge = hash_points(Y_point, H_point, U_point, Announcement_one, Announcement_two) */
-    // todo: we need to write the full 32 bytes
-    // todo: we need to include the message in the hash computation
     _vrf_twohashdh_hash_points(challenge_scalar, Y_point, &H_point, &U_point, &Announcement_one, &Announcement_two);
-    memset(challenge_scalar+16, 0, 16); /* zero the remaining 16 bytes of c_scalar */
 
     /* Response computed below*/
 
 
     /* output pi */
     ge25519_p3_tobytes(pi, &U_point); /* pi[0:32] = U_point */
-    memmove(pi+32, challenge_scalar, 16); /* pi[32:48] = challenge (16 bytes) todo: should be 32*/
-    sc25519_muladd(pi+48, challenge_scalar, x_scalar, random_proof); /* pi[48:80] = s = c*x + k (mod q). RESPONSE HERE */
+    memmove(pi+32, challenge_scalar, 32); /* pi[32:64] = challenge (32 bytes) */
+    sc25519_muladd(pi+64, challenge_scalar, x_scalar, &random_proof); /* pi[64:96] = s = c*x + k (mod q). RESPONSE HERE */
 
-    sodium_memzero(random_proof, sizeof random_proof); /* random_proof must remain secret */
+    sodium_memzero(&random_proof, sizeof random_proof); /* random_proof must remain secret */
     /* todo: erase other non-sensitive intermediate state for good measure */
 }
 

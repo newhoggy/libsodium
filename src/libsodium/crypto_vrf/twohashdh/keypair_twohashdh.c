@@ -3,6 +3,7 @@
 
 #include "crypto_hash_sha512.h"
 #include "crypto_vrf_twohashdh.h"
+#include "crypto_core_ed25519.h"
 #include "private/ed25519_ref10.h"
 #include "randombytes.h"
 #include "utils.h"
