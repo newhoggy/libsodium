@@ -87,13 +87,6 @@ int
 _vrf_twohashdh_decode_proof(ge25519_p3 *U_point, unsigned char challenge[32],
                               unsigned char response[32], const unsigned char pi[crypto_vrf_twohashdh_PROOFBYTES])
 {
-    if (ge25519_is_canonical(pi) == 0) {
-        printf("not canonical \n");
-    }
-
-    if (ge25519_frombytes(U_point, pi) != 0) {
-        printf("failed from bytes\n");
-    }
     /* gamma = decode_point(pi[0:32]) */
     if (ge25519_is_canonical(pi) == 0 ||
         ge25519_frombytes(U_point, pi) != 0) {

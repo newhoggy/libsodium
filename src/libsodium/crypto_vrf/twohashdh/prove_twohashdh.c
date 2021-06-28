@@ -32,31 +32,6 @@ vrf_prove(unsigned char pi[crypto_vrf_twohashdh_PROOFBYTES], const ge25519_p3 *Y
     ge25519_scalarmult_base(&Announcement_one, &random_proof);
     ge25519_scalarmult(&Announcement_two, &random_proof, &H_point);
 
-    unsigned char u_string[32], a_one[32], a_two[32];
-    /* challenge = hash_points(Y_point, H_point, U_point, Announcement_one, Announcement_two) */
-    printf("H_point (prover):");
-    for (int i = 0; i<32; i++) {
-        printf("%c", h_string[i]);
-    }
-    printf("\n");
-    ge25519_tobytes(u_string, &U_point);
-    printf("U_point (prover):");
-    for (int i = 0; i<32; i++) {
-        printf("%c", u_string[i]);
-    }
-    printf("\n");
-    ge25519_tobytes(a_one, &Announcement_one);
-    printf("Announcement1 (prover):");
-    for (int i = 0; i<32; i++) {
-        printf("%c", a_one[i]);
-    }
-    printf("\n");
-    ge25519_tobytes(a_two, &Announcement_two);
-    printf("Announcement2 (prover):");
-    for (int i = 0; i<32; i++) {
-        printf("%c", a_two[i]);
-    }
-    printf("\n");
     _vrf_twohashdh_hash_points(challenge_scalar, Y_point, &H_point, &U_point, &Announcement_one, &Announcement_two);
 
     /* Response computed below*/
@@ -92,11 +67,7 @@ crypto_vrf_twohashdh_prove(unsigned char proof[crypto_vrf_twohashdh_PROOFBYTES],
     unsigned char x_scalar[32];
 
     memmove(x_scalar, skpk, 32);
-    if (ge25519_is_canonical(skpk + 32) == 0) {
-        printf("not canonical");
-        return -1;
-    } else if (ge25519_frombytes(&Y_point, skpk + 32) != 0) {
-        printf("not from bytes");
+    if (ge25519_is_canonical(skpk + 32) == 0 || ge25519_frombytes(&Y_point, skpk + 32) != 0) {
         sodium_memzero(x_scalar, 32);
         sodium_memzero(&Y_point, sizeof Y_point); /* for good measure */
         return -1;

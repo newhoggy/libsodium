@@ -69,7 +69,6 @@ vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[crypto_vrf_twohashd
     ge25519_cached tmp_cached_point;
 
     if (_vrf_twohashdh_decode_proof(&U_point, challenge_scalar, response_scalar, pi) != 0) {
-        printf("decoding proof\n");
         return -1;
     }
     /* vrf_decode_proof writes to the first 16 bytes of c_scalar; we zero the
@@ -101,34 +100,11 @@ vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[crypto_vrf_twohashd
     ge25519_double_scalarmult_vartime(&Announcement_one, challenge_scalar, &pk_negate, response_scalar);
     ge25519_double_scalarmult_vartime_variable(&Announcement_two, challenge_scalar, &U_point_negate, response_scalar, &H_point);
 
-    unsigned char u_string[32], a_one[32], a_two[32];
-    /* challenge = hash_points(Y_point, H_point, U_point, Announcement_one, Announcement_two) */
-    printf("H_point (verif):");
-    for (int i = 0; i<32; i++) {
-        printf("%c", h_string[i]);
-    }
-    printf("\n");
-    ge25519_tobytes(u_string, &U_point);
-    printf("U_point (verif):");
-    for (int i = 0; i<32; i++) {
-        printf("%c", u_string[i]);
-    }
-    printf("\n");
-    ge25519_tobytes(a_one, &Announcement_one);
-    printf("Announcement1 (verif):");
-    for (int i = 0; i<32; i++) {
-        printf("%c", a_one[i]);
-    }
-    printf("\n");
-    ge25519_tobytes(a_two, &Announcement_two);
-    printf("Announcement2 (verif):");
-    for (int i = 0; i<32; i++) {
-        printf("%c", a_two[i]);
-    }
-    printf("\n");
+    // todo: unknown behaviour. This should be handled. If we don't do the following, check fails. It shouldn't
+    unsigned char u_string[32];
+    ge25519_p3_tobytes(u_string, &U_point);
     _vrf_twohashdh_hash_points_verif(challenge_check, Y_point, &H_point, &U_point, &Announcement_one, &Announcement_two);
 
-    printf("in the comparison\n");
     return crypto_verify_32(challenge_scalar, challenge_check);
 }
 
