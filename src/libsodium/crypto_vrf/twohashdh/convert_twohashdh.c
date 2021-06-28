@@ -2,6 +2,7 @@
 
 #include "crypto_hash_sha512.h"
 #include "private/ed25519_ref10.h"
+#include "crypto_vrf_twohashdh.h"
 #include "vrf_twohashdh.h"
 
 /* Hash a message to a curve point using Elligator2.
@@ -83,9 +84,16 @@ _vrf_twohashdh_generate_output(unsigned char output[64], const ge25519_p3 *U_poi
 }
 
 int
-_vrf_twohashdh_decode_proof(ge25519_p3 *U_point, unsigned char challenge[16],
-                              unsigned char response[32], const unsigned char pi[80])
+_vrf_twohashdh_decode_proof(ge25519_p3 *U_point, unsigned char challenge[32],
+                              unsigned char response[32], const unsigned char pi[crypto_vrf_twohashdh_PROOFBYTES])
 {
+    if (ge25519_is_canonical(pi) == 0) {
+        printf("not canonical \n");
+    }
+
+    if (ge25519_frombytes(U_point, pi) != 0) {
+        printf("failed from bytes\n");
+    }
     /* gamma = decode_point(pi[0:32]) */
     if (ge25519_is_canonical(pi) == 0 ||
         ge25519_frombytes(U_point, pi) != 0) {
@@ -93,7 +101,7 @@ _vrf_twohashdh_decode_proof(ge25519_p3 *U_point, unsigned char challenge[16],
     }
 
     // todo: challenge should be 32
-    memmove(challenge, pi+32, 16); /* c = pi[32:48] */
-    memmove(response, pi+48, 32); /* s = pi[48:80] */
+    memmove(challenge, pi+32, 32); /* c = pi[32:64] */
+    memmove(response, pi+64, 32); /* s = pi[64:96] */
     return 0;
 }

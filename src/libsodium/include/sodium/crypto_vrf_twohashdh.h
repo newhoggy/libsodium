@@ -37,7 +37,7 @@ size_t crypto_vrf_twohashdh_outputbytes(void);
 //
 // Thread-safe if sodium_init() has been called first.
 SODIUM_EXPORT
-void crypto_vrf_twohashdh_keypair(unsigned char *pk, unsigned char *sk);
+void crypto_vrf_twohashdh_keypair(unsigned char *sk);
 
 //
 //SODIUM_EXPORT

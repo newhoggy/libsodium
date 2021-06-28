@@ -55,12 +55,12 @@ crypto_vrf_twohashdh_is_valid_key(const unsigned char pk[crypto_vrf_twohashdh_PU
  * (but does depend on its length alphalen)
  */
 static int
-vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[80],
+vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[crypto_vrf_twohashdh_PROOFBYTES],
            const unsigned char *alpha, const unsigned long long alphalen)
 {
     /* Note: c fits in 16 bytes, but ge25519_scalarmult expects a 32-byte scalar.
      * Similarly, s_scalar fits in 32 bytes but sc25519_reduce takes in 64 bytes. */
-    unsigned char h_string[32], challenge_check[32], challenge_scalar[32], response_scalar[64], cprime[16], Y_bytes;
+    unsigned char h_string[32], challenge_check[32], challenge_scalar[32], response_scalar[32],Y_bytes;
 
     ge25519_p3     H_point, U_point, V_point, tmp_p3_point,
                     pk_negate, U_point_negate;
@@ -75,15 +75,13 @@ vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[80],
     /* vrf_decode_proof writes to the first 16 bytes of c_scalar; we zero the
      * second 16 bytes ourselves, as ge25519_scalarmult expects a 32-byte scalar.
      */
-    memset(challenge_scalar+16, 0, 16);
-
+//    memset(challenge_scalar+16, 0, 16);
+//
     /* vrf_decode_proof sets only the first 32 bytes of s_scalar; we zero the
      * second 32 bytes ourselves, as sc25519_reduce expects a 64-byte scalar.
      * Reducing the scalar s mod q ensures the high order bit of s is 0, which
      * ref10's scalarmult functions require.
      */
-    memset(response_scalar+32, 0, 32);
-    sc25519_reduce(response_scalar);
 
     _vrf_twohashdh_hash_to_curve_elligator2_25519(h_string, alpha, alphalen);
 
@@ -103,6 +101,31 @@ vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[80],
     ge25519_double_scalarmult_vartime(&Announcement_one, challenge_scalar, &pk_negate, response_scalar);
     ge25519_double_scalarmult_vartime_variable(&Announcement_two, challenge_scalar, &U_point_negate, response_scalar, &H_point);
 
+    unsigned char u_string[32], a_one[32], a_two[32];
+    /* challenge = hash_points(Y_point, H_point, U_point, Announcement_one, Announcement_two) */
+    printf("H_point (verif):");
+    for (int i = 0; i<32; i++) {
+        printf("%c", h_string[i]);
+    }
+    printf("\n");
+    ge25519_tobytes(u_string, &U_point);
+    printf("U_point (verif):");
+    for (int i = 0; i<32; i++) {
+        printf("%c", u_string[i]);
+    }
+    printf("\n");
+    ge25519_tobytes(a_one, &Announcement_one);
+    printf("Announcement1 (verif):");
+    for (int i = 0; i<32; i++) {
+        printf("%c", a_one[i]);
+    }
+    printf("\n");
+    ge25519_tobytes(a_two, &Announcement_two);
+    printf("Announcement2 (verif):");
+    for (int i = 0; i<32; i++) {
+        printf("%c", a_two[i]);
+    }
+    printf("\n");
     _vrf_twohashdh_hash_points_verif(challenge_check, Y_point, &H_point, &U_point, &Announcement_one, &Announcement_two);
 
     printf("in the comparison\n");
