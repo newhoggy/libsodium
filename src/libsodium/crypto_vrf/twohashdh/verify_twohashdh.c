@@ -60,7 +60,7 @@ vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[crypto_vrf_twohashd
 {
     /* Note: c fits in 16 bytes, but ge25519_scalarmult expects a 32-byte scalar.
      * Similarly, s_scalar fits in 32 bytes but sc25519_reduce takes in 64 bytes. */
-    unsigned char h_string[32], challenge_check[32], challenge_scalar[32], response_scalar[32],Y_bytes;
+    unsigned char h_string[32], challenge_check[32], challenge_scalar[32], response_scalar[32],Y_bytes[32];
 
     ge25519_p3     H_point, U_point, V_point, tmp_p3_point,
                     pk_negate, U_point_negate;
@@ -85,25 +85,24 @@ vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[crypto_vrf_twohashd
     _vrf_twohashdh_hash_to_curve_elligator2_25519(h_string, alpha, alphalen);
 
     ge25519_frombytes(&H_point, h_string);
-    ge25519_p3_tobytes(&Y_bytes, Y_point);
+    ge25519_p3_tobytes(Y_bytes, Y_point);
 
-    if (ge25519_frombytes_negate_vartime(&pk_negate, &Y_bytes) != 0) {
-        printf("negating 1\n");
+    if (ge25519_frombytes_negate_vartime(&pk_negate, Y_bytes) != 0) {
         return -1;
     }
 
     if (ge25519_frombytes_negate_vartime(&U_point_negate, pi) != 0) {
-        printf("negating 2\n");
         return -1;
     }
 
     ge25519_double_scalarmult_vartime(&Announcement_one, challenge_scalar, &pk_negate, response_scalar);
     ge25519_double_scalarmult_vartime_variable(&Announcement_two, challenge_scalar, &U_point_negate, response_scalar, &H_point);
 
-    // todo: unknown behaviour. This should be handled. If we don't do the following, check fails. It shouldn't
-    unsigned char u_string[32];
-    ge25519_p3_tobytes(u_string, &U_point);
-    _vrf_twohashdh_hash_points_verif(challenge_check, Y_point, &H_point, &U_point, &Announcement_one, &Announcement_two);
+    unsigned char ann_1[32], ann_2[32];
+    ge25519_tobytes(ann_1, &Announcement_one);
+    ge25519_tobytes(ann_2, &Announcement_two);
+
+    _vrf_twohashdh_hash_points(challenge_check, Y_bytes, h_string, pi, ann_1, ann_2);
 
     return crypto_verify_32(challenge_scalar, challenge_check);
 }

@@ -37,17 +37,17 @@ _vrf_twohashdh_hash_to_curve_elligator2_25519(unsigned char H_string[32],
  * Hashes four points to a 16-byte string.
  * Constant time. */
 void
-_vrf_twohashdh_hash_points(unsigned char challenge_scalar[32], const ge25519_p3 *Y_point,
-                           const ge25519_p3 *H_point, const ge25519_p3 *U_point,
-                           const ge25519_p3 *Announcement_one, const ge25519_p3 *Announcement_two)
+_vrf_twohashdh_hash_points(unsigned char challenge_scalar[32], const unsigned char *Y_point,
+                           const unsigned char *H_point, const unsigned char *U_point,
+                           const unsigned char *Announcement_one, const unsigned char *Announcement_two)
 {
     unsigned char str[32*5], c1[64];
 
-    ge25519_p3_tobytes(str+32*0, Y_point);
-    ge25519_p3_tobytes(str+32*1, H_point);
-    ge25519_p3_tobytes(str+32*2, U_point);
-    ge25519_p3_tobytes(str+32*3, Announcement_one);
-    ge25519_p3_tobytes(str+32*4, Announcement_two);
+    memmove(str+32*0, Y_point, 32);
+    memmove(str+32*1, H_point, 32);
+    memmove(str+32*2, U_point, 32);
+    memmove(str+32*3, Announcement_one, 32);
+    memmove(str+32*4, Announcement_two, 32);
     crypto_hash_sha512(c1, str, sizeof str);
     sc25519_reduce(c1);
     memmove(challenge_scalar, c1, 32);

@@ -28,19 +28,25 @@ vrf_prove(unsigned char pi[crypto_vrf_twohashdh_PROOFBYTES], const ge25519_p3 *Y
 
     // Now we perform a proof of DLOG equality
     /* Announcement */
-    crypto_core_ed25519_scalar_random(&random_proof);
-    ge25519_scalarmult_base(&Announcement_one, &random_proof);
-    ge25519_scalarmult(&Announcement_two, &random_proof, &H_point);
-
-    _vrf_twohashdh_hash_points(challenge_scalar, Y_point, &H_point, &U_point, &Announcement_one, &Announcement_two);
-
-    /* Response computed below*/
-
+    crypto_core_ed25519_scalar_random(random_proof);
+    ge25519_scalarmult_base(&Announcement_one, random_proof);
+    ge25519_scalarmult(&Announcement_two, random_proof, &H_point);
 
     /* output pi */
     ge25519_p3_tobytes(pi, &U_point); /* pi[0:32] = U_point */
+
+    unsigned char y_string[32], ann_1[32], ann_2[32];
+    ge25519_p3_tobytes(y_string, Y_point);
+    ge25519_p3_tobytes(ann_1, &Announcement_one);
+    ge25519_p3_tobytes(ann_2, &Announcement_two);
+
+    _vrf_twohashdh_hash_points(challenge_scalar, y_string, h_string, pi, ann_1, ann_2);
+
+
+    /* Response computed below*/
+
     memmove(pi+32, challenge_scalar, 32); /* pi[32:64] = challenge (32 bytes) */
-    sc25519_muladd(pi+64, challenge_scalar, x_scalar, &random_proof); /* pi[64:96] = s = c*x + k (mod q). RESPONSE HERE */
+    sc25519_muladd(pi+64, challenge_scalar, x_scalar, random_proof); /* pi[64:96] = s = c*x + k (mod q). RESPONSE HERE */
 
     sodium_memzero(&random_proof, sizeof random_proof); /* random_proof must remain secret */
     /* todo: erase other non-sensitive intermediate state for good measure */

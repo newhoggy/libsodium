@@ -13,9 +13,9 @@ void _vrf_twohashdh_hash_to_curve_elligator2_25519(unsigned char H_string[32],
                                                      const unsigned long long alphalen);
 
 void
-_vrf_twohashdh_hash_points(unsigned char challenge_scalar[32], const ge25519_p3 *Y_point,
-                           const ge25519_p3 *H_point, const ge25519_p3 *U_point,
-                           const ge25519_p3 *Announcement_one, const ge25519_p3 *Announcement_two);
+_vrf_twohashdh_hash_points(unsigned char *challenge_scalar, const unsigned char *Y_point,
+                           const unsigned char *H_point, const unsigned char *U_point,
+                           const unsigned char *Announcement_one, const unsigned char *Announcement_two);
 
 // todo: probably find an alternative
 void
