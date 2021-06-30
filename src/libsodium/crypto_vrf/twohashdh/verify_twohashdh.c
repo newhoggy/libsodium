@@ -71,16 +71,6 @@ vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[crypto_vrf_twohashd
     if (_vrf_twohashdh_decode_proof(&U_point, challenge_scalar, response_scalar, pi) != 0) {
         return -1;
     }
-    /* vrf_decode_proof writes to the first 16 bytes of c_scalar; we zero the
-     * second 16 bytes ourselves, as ge25519_scalarmult expects a 32-byte scalar.
-     */
-//    memset(challenge_scalar+16, 0, 16);
-//
-    /* vrf_decode_proof sets only the first 32 bytes of s_scalar; we zero the
-     * second 32 bytes ourselves, as sc25519_reduce expects a 64-byte scalar.
-     * Reducing the scalar s mod q ensures the high order bit of s is 0, which
-     * ref10's scalarmult functions require.
-     */
 
     _vrf_twohashdh_hash_to_curve_elligator2_25519(h_string, alpha, alphalen);
 
@@ -114,14 +104,6 @@ crypto_vrf_twohashdh_verify(unsigned char output[crypto_vrf_twohashdh_OUTPUTBYTE
                               const unsigned char *msg, const unsigned long long msglen)
 {
     ge25519_p3 Y;
-    if (vrf_validate_key(&Y, pk) != 0) {
-        printf("failed with key\n");
-    }
-
-    if (vrf_verify(&Y, proof, msg, msglen) != 0) {
-        printf("failed proof\n");
-    }
-
     if ((vrf_validate_key(&Y, pk) == 0) && (vrf_verify(&Y, proof, msg, msglen) == 0)) {
         return crypto_vrf_twohashdh_proof_to_hash(output, proof, msg, msglen);
     } else {

@@ -78,16 +78,20 @@ vrf_nonce_generation(unsigned char k_scalar[32],
 
 int api_scalarmul(unsigned char *point, const unsigned char *scalar) {
     unsigned char result[32];
-    crypto_scalarmult_ed25519(result, scalar, point);
+    crypto_scalarmult_ed25519_noclamp(result, scalar, point);
 
     return 0;
 }
 
 int internal_scalarmul(unsigned char *point, const unsigned char *scalar) {
+    unsigned char result_bytes[32];
     ge25519_p3 result, point_in;
-    ge25519_frombytes(&point_in, point);
+    if (ge25519_frombytes(&point_in, point) != 0) {
+        return -1;
+    }
     ge25519_scalarmult(&result, scalar, &point_in);
-
+    // note that if we work with the internal operations, we don't need to perform this test.
+    ge25519_p3_tobytes(result_bytes, &result);
     return 0;
 }
 
