@@ -23,6 +23,7 @@ SOFTWARE.
 #include <string.h>
 
 #include "crypto_hash_sha512.h"
+#include "crypto_generichash.h"
 #include "crypto_vrf_ietfdraft03.h"
 #include "private/ed25519_ref10.h"
 #include "vrf_ietfdraft03.h"
@@ -55,6 +56,31 @@ _vrf_ietfdraft03_string_to_point(ge25519_p3 *point, const unsigned char string[3
 	return -1;
     }
     return 0;
+}
+
+/*
+ * Elligator2 using blake2b
+ */
+void
+_vrf_ietfdraft03_hash_to_curve_elligator2_25519_blake(unsigned char H_string[32],
+                                                const ge25519_p3 *Y_point,
+                                                const unsigned char *alpha,
+                                                const unsigned long long alphalen)
+{
+    crypto_generichash_blake2b_state hs;
+    unsigned char            Y_string[32], r_string[32];
+
+    _vrf_ietfdraft03_point_to_string(Y_string, Y_point);
+
+    crypto_generichash_blake2b_init(&hs, NULL, 0U, sizeof r_string);
+    crypto_generichash_blake2b_update(&hs, &SUITE, 1);
+    crypto_generichash_blake2b_update(&hs, &ONE, 1);
+    crypto_generichash_blake2b_update(&hs, Y_string, 32);
+    crypto_generichash_blake2b_update(&hs, alpha, alphalen);
+    crypto_generichash_blake2b_final(&hs, r_string, 32);
+
+    r_string[31] &= 0x7f; /* clear sign bit */
+    ge25519_from_uniform(H_string, r_string); /* elligator2 */
 }
 
 /* Hash a message to a curve point using Elligator2.
@@ -143,6 +169,29 @@ _vrf_ietfdraft03_hash_points(unsigned char c[16], const ge25519_p3 *P1,
     sodium_memzero(c1, 64);
 }
 
+/*
+ * Hash points using blake2b
+ */
+void
+_vrf_ietfdraft03_hash_points_blake(unsigned char c[16], const ge25519_p3 *P1,
+                             const ge25519_p3 *P2, const ge25519_p3 *P3,
+                             const ge25519_p3 *P4)
+{
+    unsigned char str[2+32*4], c1[32];
+
+    str[0] = SUITE;
+    str[1] = TWO;
+    _vrf_ietfdraft03_point_to_string(str+2+32*0, P1);
+    _vrf_ietfdraft03_point_to_string(str+2+32*1, P2);
+    _vrf_ietfdraft03_point_to_string(str+2+32*2, P3);
+    _vrf_ietfdraft03_point_to_string(str+2+32*3, P4);
+    crypto_generichash(c1, sizeof c1,
+                       str, sizeof str,
+                       NULL, 0);
+    memmove(c, c1, 16);
+    sodium_memzero(c1, 32);
+}
+
 /* Subroutine specified in draft spec section 5.4.3.
  * Hashes four points to a 16-byte string.
  * Constant time. For optimised calls*/
@@ -162,6 +211,29 @@ _vrf_ietfdraft03_hash_points_opt(unsigned char c[16], const ge25519_p3 *P1,
     crypto_hash_sha512(c1, str, sizeof str);
     memmove(c, c1, 16);
     sodium_memzero(c1, 64);
+}
+
+/* Subroutine specified in draft spec section 5.4.3.
+ * Hashes four points to a 16-byte string.
+ * Constant time. For optimised calls using blake2b*/
+void
+_vrf_ietfdraft03_hash_points_opt_blake(unsigned char c[16], const ge25519_p3 *P1,
+                                 const ge25519_p3 *P2, unsigned char P3[32],
+                                 unsigned char P4[32])
+{
+    unsigned char str[2+32*4], c1[32];
+
+    str[0] = SUITE;
+    str[1] = TWO;
+    _vrf_ietfdraft03_point_to_string(str+2+32*0, P1);
+    _vrf_ietfdraft03_point_to_string(str+2+32*1, P2);
+    memmove(str+2+32*2, P3, 32);
+    memmove(str+2+32*3, P4, 32);
+    crypto_generichash(c1, sizeof c1,
+                       str, sizeof str,
+                       NULL, 0);
+    memmove(c, c1, 16);
+    sodium_memzero(c1, 32);
 }
 
 /* Decode an 80-byte proof pi into a point gamma, a 16-byte scalar c, and a

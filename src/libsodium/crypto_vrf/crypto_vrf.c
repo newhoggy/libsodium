@@ -63,6 +63,12 @@ crypto_vrf_prove(unsigned char *proof, const unsigned char *skpk,
     return crypto_vrf_ietfdraft03_prove(proof, skpk, m, mlen);
 }
 
+int crypto_vrf_prove_blake(unsigned char *proof, const unsigned char *skpk,
+                           const unsigned char *m, const unsigned long long mlen)
+{
+    return crypto_vrf_ietfdraft03_prove_blake(proof, skpk, m, mlen);
+}
+
 int
 crypto_vrf_verify(unsigned char *output, const unsigned char *pk,
 		  const unsigned char *proof, const unsigned char *m,

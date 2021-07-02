@@ -88,6 +88,11 @@ int crypto_vrf_ietfdraft03_prove_try_inc(unsigned char *proof, const unsigned ch
                                  unsigned long long mlen);
 
 SODIUM_EXPORT
+int crypto_vrf_ietfdraft03_prove_blake(unsigned char *proof, const unsigned char *sk,
+                                       const unsigned char *m,
+                                       unsigned long long mlen);
+
+SODIUM_EXPORT
 int api_scalarmul(unsigned char *point, const unsigned char *scalar);
 
 SODIUM_EXPORT
@@ -123,6 +128,15 @@ int crypto_vrf_ietfdraft03_verify_opt(unsigned char *output,
                                   const unsigned char *proof,
                                   const unsigned char *m,
                                   unsigned long long mlen)
+__attribute__ ((warn_unused_result));
+
+// Optimised verification using blake2b
+SODIUM_EXPORT
+int crypto_vrf_ietfdraft03_verify_opt_blake(unsigned char *output,
+                                      const unsigned char *pk,
+                                      const unsigned char *proof,
+                                      const unsigned char *m,
+                                      unsigned long long mlen)
 __attribute__ ((warn_unused_result));
 
 // Verify a VRF proof using `try_and_increment` instead of elligator.
