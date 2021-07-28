@@ -215,8 +215,14 @@ vrf_verify_try_inc(const ge25519_p3 *Y_point, const unsigned char pi[80],
     /* calculate U = s*B - c*Y */
     ge25519_double_scalarmult_vartime(&U_point, cn_scalar, Y_point, s_scalar);
 
+    const unsigned char **multiscalar_scalars = (const unsigned char **)malloc(2 * sizeof(const unsigned char *));
+    multiscalar_scalars[0] = cn_scalar;
+    multiscalar_scalars[1] = s_scalar;
+
+    ge25519_p3 multiscalar_bases[2] = {Gamma_point, H_point};
+
     /* calculate V = s*H -  c*Gamma */
-    ge25519_double_scalarmult_vartime_variable(&V_point, cn_scalar, &Gamma_point, s_scalar, &H_point);
+    ge25519_multi_scalarmult_vartime(&V_point, multiscalar_scalars, multiscalar_bases, 2);
 
     ge25519_tobytes(U_bytes, &U_point);
     ge25519_tobytes(V_bytes, &V_point);
@@ -318,8 +324,14 @@ vrf_verify_optimised_blake(const ge25519_p3 *Y_point, const unsigned char pi[80]
     /* calculate U = s*B - c*Y */
     ge25519_double_scalarmult_vartime(&U_point, cn_scalar, Y_point, s_scalar);
 
+    const unsigned char **multiscalar_scalars = (const unsigned char **)malloc(2 * sizeof(const unsigned char *));
+    multiscalar_scalars[0] = cn_scalar;
+    multiscalar_scalars[1] = s_scalar;
+
+    ge25519_p3 multiscalar_bases[2] = {Gamma_point, H_point};
+
     /* calculate V = s*H -  c*Gamma */
-    ge25519_double_scalarmult_vartime_variable(&V_point, cn_scalar, &Gamma_point, s_scalar, &H_point);
+    ge25519_multi_scalarmult_vartime(&V_point, multiscalar_scalars, multiscalar_bases, 2);
 
     ge25519_tobytes(U_bytes, &U_point);
     ge25519_tobytes(V_bytes, &V_point);

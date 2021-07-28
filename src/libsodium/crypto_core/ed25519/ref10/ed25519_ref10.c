@@ -2,6 +2,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+#include <stdio.h>
 
 #include "crypto_verify_32.h"
 #include "private/common.h"
@@ -754,6 +756,46 @@ ge25519_double_scalarmult_vartime(ge25519_p2 *r, const unsigned char *a,
     }
 }
 
+void point_precomputation(ge25519_cached cached[8], const ge25519_p3 *base) {
+    ge25519_p1p1   t;
+    ge25519_p3     u;
+    ge25519_p3     A;
+
+    // Precomputation of values of A
+    ge25519_p3_to_cached(&cached[0], base);
+
+    ge25519_p3_dbl(&t, base);
+    ge25519_p1p1_to_p3(&A, &t);
+
+    ge25519_add(&t, &A, &cached[0]);
+    ge25519_p1p1_to_p3(&u, &t);
+    ge25519_p3_to_cached(&cached[1], &u);
+
+    ge25519_add(&t, &A, &cached[1]);
+    ge25519_p1p1_to_p3(&u, &t);
+    ge25519_p3_to_cached(&cached[2], &u);
+
+    ge25519_add(&t, &A, &cached[2]);
+    ge25519_p1p1_to_p3(&u, &t);
+    ge25519_p3_to_cached(&cached[3], &u);
+
+    ge25519_add(&t, &A, &cached[3]);
+    ge25519_p1p1_to_p3(&u, &t);
+    ge25519_p3_to_cached(&cached[4], &u);
+
+    ge25519_add(&t, &A, &cached[4]);
+    ge25519_p1p1_to_p3(&u, &t);
+    ge25519_p3_to_cached(&cached[5], &u);
+
+    ge25519_add(&t, &A, &cached[5]);
+    ge25519_p1p1_to_p3(&u, &t);
+    ge25519_p3_to_cached(&cached[6], &u);
+
+    ge25519_add(&t, &A, &cached[6]);
+    ge25519_p1p1_to_p3(&u, &t);
+    ge25519_p3_to_cached(&cached[7], &u);
+}
+
 /*
  Variable time double scalar multiplication with variable bases
  r = a * A + b * B
@@ -772,83 +814,14 @@ ge25519_double_scalarmult_vartime_variable(ge25519_p2 *r, const unsigned char *a
     ge25519_cached Ai[8]; /* A,3A,5A,7A,9A,11A,13A,15A */
     ge25519_cached Bi[8]; /* B,3B,5B,7B,9B,11B,13B,15B */
     ge25519_p1p1   t;
-//    ge25519_p1p1   t_b;
     ge25519_p3     u;
-//    ge25519_p3     u_b;
-    ge25519_p3     A2;
-    ge25519_p3     B2;
     int            i;
 
     slide_vartime(aslide, a);
     slide_vartime(bslide, b);
 
-    // Precomputation of values of A
-    ge25519_p3_to_cached(&Ai[0], A);
-
-    ge25519_p3_dbl(&t, A);
-    ge25519_p1p1_to_p3(&A2, &t);
-
-    ge25519_add(&t, &A2, &Ai[0]);
-    ge25519_p1p1_to_p3(&u, &t);
-    ge25519_p3_to_cached(&Ai[1], &u);
-
-    ge25519_add(&t, &A2, &Ai[1]);
-    ge25519_p1p1_to_p3(&u, &t);
-    ge25519_p3_to_cached(&Ai[2], &u);
-
-    ge25519_add(&t, &A2, &Ai[2]);
-    ge25519_p1p1_to_p3(&u, &t);
-    ge25519_p3_to_cached(&Ai[3], &u);
-
-    ge25519_add(&t, &A2, &Ai[3]);
-    ge25519_p1p1_to_p3(&u, &t);
-    ge25519_p3_to_cached(&Ai[4], &u);
-
-    ge25519_add(&t, &A2, &Ai[4]);
-    ge25519_p1p1_to_p3(&u, &t);
-    ge25519_p3_to_cached(&Ai[5], &u);
-
-    ge25519_add(&t, &A2, &Ai[5]);
-    ge25519_p1p1_to_p3(&u, &t);
-    ge25519_p3_to_cached(&Ai[6], &u);
-
-    ge25519_add(&t, &A2, &Ai[6]);
-    ge25519_p1p1_to_p3(&u, &t);
-    ge25519_p3_to_cached(&Ai[7], &u);
-
-    // Precomputation of values of B
-    ge25519_p3_to_cached(&Bi[0], B);
-
-    ge25519_p3_dbl(&t, B);
-    ge25519_p1p1_to_p3(&B2, &t);
-
-    ge25519_add(&t, &B2, &Bi[0]);
-    ge25519_p1p1_to_p3(&u, &t);
-    ge25519_p3_to_cached(&Bi[1], &u);
-
-    ge25519_add(&t, &B2, &Bi[1]);
-    ge25519_p1p1_to_p3(&u, &t);
-    ge25519_p3_to_cached(&Bi[2], &u);
-
-    ge25519_add(&t, &B2, &Bi[2]);
-    ge25519_p1p1_to_p3(&u, &t);
-    ge25519_p3_to_cached(&Bi[3], &u);
-
-    ge25519_add(&t, &B2, &Bi[3]);
-    ge25519_p1p1_to_p3(&u, &t);
-    ge25519_p3_to_cached(&Bi[4], &u);
-
-    ge25519_add(&t, &B2, &Bi[4]);
-    ge25519_p1p1_to_p3(&u, &t);
-    ge25519_p3_to_cached(&Bi[5], &u);
-
-    ge25519_add(&t, &B2, &Bi[5]);
-    ge25519_p1p1_to_p3(&u, &t);
-    ge25519_p3_to_cached(&Bi[6], &u);
-
-    ge25519_add(&t, &B2, &Bi[6]);
-    ge25519_p1p1_to_p3(&u, &t);
-    ge25519_p3_to_cached(&Bi[7], &u);
+    point_precomputation(Ai, A);
+    point_precomputation(Bi, B);
 
     ge25519_p2_0(r);
 
@@ -879,6 +852,70 @@ ge25519_double_scalarmult_vartime_variable(ge25519_p2 *r, const unsigned char *a
 
         ge25519_p1p1_to_p2(r, &t);
     }
+}
+
+/*
+ Variable time multiple scalar multiplication with variable bases.
+
+ Only used for VRF verification.
+ */
+
+void
+ge25519_multi_scalarmult_vartime(ge25519_p2 *r, const unsigned char *scalars[32],
+                                           const ge25519_p3 *bases, const int size)
+{
+    // dynamically create array of pointers of size `size`.
+    signed char    **scalar_slides = (signed char **)malloc(size * sizeof(signed char *));
+    ge25519_cached **precomputed_bases = (ge25519_cached **)malloc(size * sizeof(ge25519_cached *)); /* A,3A,5A,7A,9A,11A,13A,15A */
+    // allocate memory of size 256 for each row
+    for (int r = 0; r < size; r++) {
+        scalar_slides[r] = (signed char *) malloc(256 * sizeof(signed char));
+        precomputed_bases[r] = (ge25519_cached *) malloc(8 * sizeof(ge25519_cached));
+    }
+
+    ge25519_p1p1   t;
+    ge25519_p3     u;
+    int            i;
+
+    for (i = 0; i < size; i++) {
+        slide_vartime(scalar_slides[i], scalars[i]);
+        point_precomputation(precomputed_bases[i], &bases[i]);
+    }
+
+    ge25519_p2_0(r);
+
+    bool check = false;
+    for (i = 255; i >= 0; --i) {
+        for (int j = 0; j < size; j++) {
+            check |= scalar_slides[j][i];
+        }
+        if (check) {
+            break;
+        }
+    }
+
+    for (; i >= 0; --i) {
+        ge25519_p2_dbl(&t, r);
+
+        for (int j = 0; j < size; j++) {
+            if (scalar_slides[j][i] > 0) {
+                ge25519_p1p1_to_p3(&u, &t);
+                ge25519_add(&t, &u, &precomputed_bases[j][scalar_slides[j][i] / 2]);
+            } else if (scalar_slides[j][i] < 0) {
+                ge25519_p1p1_to_p3(&u, &t);
+                ge25519_sub(&t, &u, &precomputed_bases[j][(-scalar_slides[j][i]) / 2]);
+            }
+        }
+
+        ge25519_p1p1_to_p2(r, &t);
+    }
+    // deallocate memory
+    for (int i = 0; i < size; i++) {
+        free(scalar_slides[i]);
+        free(precomputed_bases[i]);
+    }
+    free(scalar_slides);
+    free(precomputed_bases);
 }
 
 /*
