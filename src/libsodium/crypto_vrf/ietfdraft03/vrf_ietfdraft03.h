@@ -36,6 +36,10 @@ int _vrf_ietfdraft03_decode_proof(ge25519_p3 *Gamma, unsigned char c[16],
 				  unsigned char s[32],
 				  const unsigned char pi[80]);
 
+int
+_vrf_ietfdraft03_decode_proof_batch_compatible(ge25519_p3 *Gamma, ge25519_p3 *U, ge25519_p3 *V,
+                                               unsigned char s[32], const unsigned char pi[128]);
+
 void _vrf_ietfdraft03_hash_to_curve_elligator2_25519(unsigned char H_string[32],
 						     const ge25519_p3 *Y_point,
 						     const unsigned char *alpha,

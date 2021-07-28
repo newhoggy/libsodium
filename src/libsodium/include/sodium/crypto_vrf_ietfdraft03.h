@@ -97,6 +97,13 @@ int crypto_vrf_ietfdraft03_prove_blake(unsigned char *proof, const unsigned char
                                        unsigned long long mlen);
 
 SODIUM_EXPORT
+int
+crypto_vrf_ietfdraft03_prove_batch_compatible(unsigned char proof[crypto_vrf_ietfdraft03_BATCH_PROOFBYTES],
+                                              const unsigned char skpk[crypto_vrf_ietfdraft03_SECRETKEYBYTES],
+                                              const unsigned char *msg,
+                                              unsigned long long msglen);
+
+SODIUM_EXPORT
 int api_scalarmul(unsigned char *point, const unsigned char *scalar);
 
 SODIUM_EXPORT
@@ -142,6 +149,14 @@ int crypto_vrf_ietfdraft03_verify_opt_blake(unsigned char *output,
                                       const unsigned char *m,
                                       unsigned long long mlen)
 __attribute__ ((warn_unused_result));
+
+// Verify a batch compatible VRF proof
+SODIUM_EXPORT
+int
+crypto_vrf_ietfdraft03_verify_batch_compatible(unsigned char output[crypto_vrf_ietfdraft03_OUTPUTBYTES],
+                                               const unsigned char pk[crypto_vrf_ietfdraft03_PUBLICKEYBYTES],
+                                               const unsigned char proof[crypto_vrf_ietfdraft03_BATCH_PROOFBYTES],
+                                               const unsigned char *msg, const unsigned long long msglen);
 
 // Verify a VRF proof using `try_and_increment` instead of elligator.
 SODIUM_EXPORT

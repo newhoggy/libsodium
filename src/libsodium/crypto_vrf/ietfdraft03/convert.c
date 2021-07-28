@@ -252,3 +252,20 @@ _vrf_ietfdraft03_decode_proof(ge25519_p3 *Gamma, unsigned char c[16],
     memmove(s, pi+48, 32); /* s = pi[48:80] */
     return 0;
 }
+
+/* Decode an 128-byte batch compatible proof pi into a point gamma, a point U, a point V, and a
+ * 32-byte scalar s.
+ * Returns 0 on success, nonzero on failure.
+ */
+int
+_vrf_ietfdraft03_decode_proof_batch_compatible(ge25519_p3 *Gamma, ge25519_p3 *U, ge25519_p3 *V,
+                              unsigned char s[32], const unsigned char pi[128])
+{
+    if (_vrf_ietfdraft03_string_to_point(Gamma, pi) != 0 || _vrf_ietfdraft03_string_to_point(U, pi + 32) != 0
+    || _vrf_ietfdraft03_string_to_point(V, pi + 64) != 0)
+    {
+        return -1;
+    }
+    memmove(s, pi+96, 32);
+    return 0;
+}

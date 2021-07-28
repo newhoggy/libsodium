@@ -26,6 +26,7 @@ SOFTWARE.
 #include "crypto_hash_sha512.h"
 #include "crypto_generichash.h"
 #include "crypto_verify_16.h"
+#include "crypto_verify_32.h"
 #include "crypto_vrf_ietfdraft03.h"
 #include "private/ed25519_ref10.h"
 #include "crypto_core_ed25519.h"
@@ -50,6 +51,35 @@ crypto_vrf_ietfdraft03_proof_to_hash(unsigned char beta[crypto_vrf_ietfdraft03_O
     /* (Gamma, c, s) = ECVRF_decode_proof(pi_string) */
     if (_vrf_ietfdraft03_decode_proof(&Gamma_point, c_scalar, s_scalar, pi) != 0) {
 	return -1;
+    }
+
+    /* beta_string = Hash(suite_string || three_string || point_to_string(cofactor * Gamma)) */
+    hash_input[0] = SUITE;
+    hash_input[1] = THREE;
+    multiply_by_cofactor(&Gamma_point);
+    _vrf_ietfdraft03_point_to_string(hash_input+2, &Gamma_point);
+    crypto_hash_sha512(beta, hash_input, sizeof hash_input);
+
+    return 0;
+}
+
+/* Convert a batch compatible VRF proof pi into a VRF output hash beta per draft spec section 5.2.
+ * This function does not verify the proof! For an untrusted proof, instead call
+ * crypto_vrf_ietfdraft03_verify, which will output the hash if verification
+ * succeeds.
+ * Returns 0 on success, -1 on failure decoding the proof.
+ */
+int
+crypto_vrf_ietfdraft03_proof_to_hash_batch_compatible(unsigned char beta[crypto_vrf_ietfdraft03_OUTPUTBYTES],
+                                     const unsigned char pi[crypto_vrf_ietfdraft03_BATCH_PROOFBYTES])
+{
+    ge25519_p3    Gamma_point, U_point, V_point;
+    unsigned char s_scalar[32]; /* unused */
+    unsigned char hash_input[2+32];
+
+    /* (Gamma, c, s) = ECVRF_decode_proof(pi_string) */
+    if (_vrf_ietfdraft03_decode_proof_batch_compatible(&Gamma_point, &U_point, &V_point, s_scalar, pi) != 0) {
+        return -1;
     }
 
     /* beta_string = Hash(suite_string || three_string || point_to_string(cofactor * Gamma)) */
@@ -172,6 +202,64 @@ vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[80],
 
     _vrf_ietfdraft03_hash_points(cprime, &H_point, &Gamma_point, &U_point, &V_point);
     return crypto_verify_16(c_scalar, cprime);
+}
+
+/* Verify a batch compatible proof . Return 0 on success, -1 on failure.
+ * We assume Y_point has passed public key validation already.
+ * Assuming verification succeeds, runtime does not depend on the message alpha
+ * (but does depend on its length alphalen)
+ */
+static int
+vrf_verify_batch_compatible(const ge25519_p3 *Y_point, const unsigned char pi[128],
+                   const unsigned char *alpha, const unsigned long long alphalen)
+{
+    /* Note: c fits in 16 bytes, but ge25519_scalarmult expects a 32-byte scalar.
+     * Similarly, s_scalar fits in 32 bytes but sc25519_reduce takes in 64 bytes. */
+    unsigned char h_string[32], c_scalar[32], cn_scalar[32], s_scalar[64], computed_U_bytes[32], computed_V_bytes[32], U_bytes[32], V_bytes[32];
+
+    ge25519_p3     H_point, Gamma_point, tmp_p3_point, U_point, V_point;
+    ge25519_p2               computed_U, computed_V;
+    ge25519_p1p1   tmp_p1p1_point;
+    ge25519_cached tmp_cached_point;
+
+    if (_vrf_ietfdraft03_decode_proof_batch_compatible(&Gamma_point, &U_point, &V_point, s_scalar, pi) != 0) {
+        return -1;
+    }
+
+    /* vrf_decode_proof sets only the first 32 bytes of s_scalar; we zero the
+     * second 32 bytes ourselves, as sc25519_reduce expects a 64-byte scalar.
+     * Reducing the scalar s mod q ensures the high order bit of s is 0, which
+     * ref10's scalarmult functions require.
+     */
+    memset(s_scalar+32, 0, 32);
+    sc25519_reduce(s_scalar);
+
+    _vrf_ietfdraft03_hash_points(c_scalar, &H_point, &Gamma_point, &U_point, &V_point);
+
+    _vrf_ietfdraft03_hash_to_curve_try_inc(h_string, Y_point, alpha, alphalen);
+    ge25519_frombytes(&H_point, h_string);
+    crypto_core_ed25519_scalar_negate(cn_scalar, c_scalar); /* negate scalar c */
+
+    /* calculate U = s*B - c*Y */
+    ge25519_double_scalarmult_vartime(&computed_U, cn_scalar, Y_point, s_scalar);
+
+    const unsigned char **multiscalar_scalars = (const unsigned char **)malloc(2 * sizeof(const unsigned char *));
+    multiscalar_scalars[0] = cn_scalar;
+    multiscalar_scalars[1] = s_scalar;
+
+    ge25519_p3 multiscalar_bases[2] = {Gamma_point, H_point};
+
+    /* calculate V = s*H -  c*Gamma */
+    ge25519_multi_scalarmult_vartime(&computed_V, multiscalar_scalars, multiscalar_bases, 2);
+
+    ge25519_tobytes(computed_U_bytes, &computed_U);
+    ge25519_tobytes(computed_V_bytes, &computed_V);
+
+    ge25519_p3_tobytes(U_bytes, &U_point);
+    ge25519_p3_tobytes(V_bytes, &V_point);
+
+
+    return crypto_verify_32(computed_U_bytes, U_bytes) && crypto_verify_32(computed_V_bytes, V_bytes);
 }
 
 /* Verify a proof per draft section 5.3. Return 0 on success, -1 on failure.
@@ -418,6 +506,30 @@ crypto_vrf_ietfdraft03_verify_try_inc(unsigned char output[crypto_vrf_ietfdraft0
     ge25519_p3 Y;
     if ((vrf_validate_key(&Y, pk) == 0) && (vrf_verify_try_inc(&Y, proof, msg, msglen) == 0)) {
         return crypto_vrf_ietfdraft03_proof_to_hash(output, proof);
+    } else {
+        return -1;
+    }
+}
+
+/* Verify a batch compatible VRF proof (for a given a public key and message) and validate the
+ * public key. If verification succeeds, store the VRF output hash in output[].
+ * Specified in draft spec section 5.3.
+ *
+ * For a given public key and message, there are many possible proofs but only
+ * one possible output hash.
+ *
+ * Returns 0 if verification succeeds (and stores output hash in output[]),
+ * nonzero on failure.
+ */
+int
+crypto_vrf_ietfdraft03_verify_batch_compatible(unsigned char output[crypto_vrf_ietfdraft03_OUTPUTBYTES],
+                              const unsigned char pk[crypto_vrf_ietfdraft03_PUBLICKEYBYTES],
+                              const unsigned char proof[crypto_vrf_ietfdraft03_BATCH_PROOFBYTES],
+                              const unsigned char *msg, const unsigned long long msglen)
+{
+    ge25519_p3 Y;
+    if ((vrf_validate_key(&Y, pk) == 0) && (vrf_verify_batch_compatible(&Y, proof, msg, msglen) == 0)) {
+        return crypto_vrf_ietfdraft03_proof_to_hash_batch_compatible(output, proof);
     } else {
         return -1;
     }
