@@ -198,6 +198,55 @@ vrf_prove(unsigned char pi[80], const ge25519_p3 *Y_point,
     sodium_memzero(&kH_point, sizeof kH_point);
 }
 
+/* Construct a proof for a message alpha per draft spec section 5.1.
+ * Takes in a secret scalar x, a public point Y, and a secret string
+ * truncated_hashed_sk that is used in nonce generation.
+ * These are computed from the secret key using the expand_sk function.
+ * Constant time in everything except alphalen (the length of the message).
+ *
+ * The proof contains the two points U and V instead of the challenge
+ * to allow for batch-verification.
+ */
+static void
+vrf_prove_batch_compatible(unsigned char pi[128], const ge25519_p3 *Y_point,
+          const unsigned char x_scalar[32],
+          const unsigned char truncated_hashed_sk_string[32],
+          const unsigned char *alpha, unsigned long long alphalen)
+{
+    /* c fits in 16 bytes, but we store it in a 32-byte array because
+     * sc25519_muladd expects a 32-byte scalar */
+    unsigned char h_string[32], k_scalar[32], c_scalar[32];
+    ge25519_p3    H_point, Gamma_point, kB_point, kH_point;
+
+    _vrf_ietfdraft03_hash_to_curve_elligator2_25519(h_string, Y_point, alpha, alphalen);
+    ge25519_frombytes(&H_point, h_string);
+
+    ge25519_scalarmult(&Gamma_point, x_scalar, &H_point); /* Gamma = x*H */
+    vrf_nonce_generation(k_scalar, truncated_hashed_sk_string, h_string);
+    ge25519_scalarmult_base(&kB_point, k_scalar); /* compute k*B */
+    ge25519_scalarmult(&kH_point, k_scalar, &H_point); /* compute k*H */
+
+    /* c = ECVRF_hash_points(h, gamma, k*B, k*H)
+     * (writes only to the first 16 bytes of c_scalar */
+    _vrf_ietfdraft03_hash_points(c_scalar, &H_point, &Gamma_point, &kB_point, &kH_point);
+    memset(c_scalar+16, 0, 16); /* zero the remaining 16 bytes of c_scalar */
+
+    /* output pi */
+    _vrf_ietfdraft03_point_to_string(pi, &Gamma_point); /* pi[0:32] = point_to_string(Gamma) */
+    _vrf_ietfdraft03_point_to_string(pi + 32, &kB_point); /* pi[32:64] = point_to_string(kB_point) */
+    _vrf_ietfdraft03_point_to_string(pi + 64, &kH_point); /* pi[64:96] = point_to_string(kH_point) */
+    sc25519_muladd(pi+96, c_scalar, x_scalar, k_scalar); /* pi[96:128] = s = c*x + k (mod q) */
+
+    sodium_memzero(k_scalar, sizeof k_scalar); /* k must remain secret */
+    /* erase other non-sensitive intermediate state for good measure */
+    sodium_memzero(h_string, sizeof h_string);
+    sodium_memzero(c_scalar, sizeof c_scalar);
+    sodium_memzero(&H_point, sizeof H_point);
+    sodium_memzero(&Gamma_point, sizeof Gamma_point);
+    sodium_memzero(&kB_point, sizeof kB_point);
+    sodium_memzero(&kH_point, sizeof kH_point);
+}
+
 /*
  * Prove VRF function using Blake2b
  */
@@ -317,6 +366,31 @@ crypto_vrf_ietfdraft03_prove_try_inc(unsigned char proof[crypto_vrf_ietfdraft03_
         return -1;
     }
     vrf_prove_try_inc(proof, &Y_point, x_scalar, truncated_hashed_sk_string, msg, msglen);
+    sodium_memzero(x_scalar, 32);
+    sodium_memzero(truncated_hashed_sk_string, 32);
+    sodium_memzero(&Y_point, sizeof Y_point); /* for good measure */
+    return 0;
+}
+
+/*
+ * Generate proof following the batch-compatible technique.
+ */
+int
+crypto_vrf_ietfdraft03_prove_batch_compatible(unsigned char proof[crypto_vrf_ietfdraft03_BATCH_PROOFBYTES],
+                                     const unsigned char skpk[crypto_vrf_ietfdraft03_SECRETKEYBYTES],
+                                     const unsigned char *msg,
+                                     unsigned long long msglen)
+{
+    ge25519_p3    Y_point;
+    unsigned char x_scalar[32], truncated_hashed_sk_string[32];
+
+    if (vrf_expand_sk(&Y_point, x_scalar, truncated_hashed_sk_string, skpk) != 0) {
+        sodium_memzero(x_scalar, 32);
+        sodium_memzero(truncated_hashed_sk_string, 32);
+        sodium_memzero(&Y_point, sizeof Y_point); /* for good measure */
+        return -1;
+    }
+    vrf_prove_batch_compatible(proof, &Y_point, x_scalar, truncated_hashed_sk_string, msg, msglen);
     sodium_memzero(x_scalar, 32);
     sodium_memzero(truncated_hashed_sk_string, 32);
     sodium_memzero(&Y_point, sizeof Y_point); /* for good measure */
