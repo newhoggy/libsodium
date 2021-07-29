@@ -21,7 +21,7 @@ jobs:
         run: sudo apt-get install -y build-essential libtool autoconf automake tcc
 
       - name: Autogen
-        run: ./autogen.sh -s
+        run: ./autogen.sh -f
 
       - name: Compilation with tcc
         run: |
@@ -43,7 +43,7 @@ jobs:
         run: sudo apt-get install -y build-essential libtool autoconf automake
 
       - name: Autogen
-        run: ./autogen.sh -s
+        run: ./autogen.sh -f
 
       - name: C99 compat check
         run: |
@@ -72,7 +72,7 @@ jobs:
         run: sudo apt-get install -y build-essential libtool autoconf automake
 
       - name: Autogen
-        run: ./autogen.sh -s
+        run: ./autogen.sh -f
 
       - name: Check globals
         run: |
@@ -90,7 +90,7 @@ jobs:
         run: sudo apt-get install -y build-essential libtool autoconf automake clang
 
       - name: Autogen
-        run: ./autogen.sh -s
+        run: ./autogen.sh -f
 
       - name: Compilation with g++
         run: |
@@ -116,7 +116,7 @@ jobs:
         run: sudo apt-get install -y build-essential libtool autoconf automake qemu-user-static gcc-powerpc-linux-gnu
 
       - name: Autogen
-        run: ./autogen.sh -s
+        run: ./autogen.sh -f
 
       - name: Big-Endian PowerPC compilation
         run: |
