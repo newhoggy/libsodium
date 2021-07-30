@@ -64,8 +64,8 @@ void _vrf_ietfdraft03_hash_points_blake(unsigned char c[16], const ge25519_p3 *P
                                         const ge25519_p3 *P4);
 
 void _vrf_ietfdraft03_hash_points_opt(unsigned char c[16], const ge25519_p3 *P1,
-                                  const ge25519_p3 *P2, unsigned char P3[32],
-                                  unsigned char P4[32]);
+                                  const ge25519_p3 *P2, const unsigned char P3[32],
+                                  const unsigned char P4[32]);
 
 void
 _vrf_ietfdraft03_hash_points_opt_blake(unsigned char c[16], const ge25519_p3 *P1,

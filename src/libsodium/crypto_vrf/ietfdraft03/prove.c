@@ -21,11 +21,15 @@ SOFTWARE.
 */
 
 #include <string.h>
+#include <time.h>
+#include <stdio.h>
 
 #include "crypto_hash_sha512.h"
 #include "crypto_generichash.h"
 #include "crypto_vrf_ietfdraft03.h"
 #include "private/ed25519_ref10.h"
+#include "crypto_core_ed25519.h"
+#include "randombytes.h"
 #include "utils.h"
 #include "vrf_ietfdraft03.h"
 
@@ -98,6 +102,59 @@ vrf_nonce_generation_blake(unsigned char k_scalar[32],
     memmove(k_scalar, k_string, 32);
 
     sodium_memzero(k_string, sizeof k_string);
+}
+
+double time_per_proof(const unsigned int size) {
+    // for random point gen
+    unsigned char x[crypto_core_ed25519_UNIFORMBYTES];
+    unsigned char random_point[crypto_core_ed25519_BYTES];
+    unsigned char random_scal[crypto_core_ed25519_SCALARBYTES];
+
+    unsigned char **multiscalar_scalars = (unsigned char **)malloc(size * 6 * sizeof(unsigned char *));
+    ge25519_p3 multiscalar_bases[size * 6];
+    ge25519_p2 expected_zero;
+    for (int i = 0; i < size * 6; i++) {
+        randombytes_buf(x, sizeof x);
+        crypto_core_ed25519_from_uniform(random_point, x);
+        crypto_core_ed25519_scalar_random(random_scal);
+        multiscalar_scalars[i] = random_scal;
+        ge25519_frombytes(&multiscalar_bases[i], random_point);
+    }
+
+    clock_t t_api;
+    t_api = clock();
+    /* calculate V = s*H -  c*Gamma */
+    ge25519_multi_scalarmult_vartime(&expected_zero, multiscalar_scalars, multiscalar_bases, size * 6, 0);
+    t_api = clock() - t_api;
+    free(multiscalar_scalars);
+
+    return ((double) t_api) / (CLOCKS_PER_SEC * size);
+}
+
+
+double time_per_proof_200() {
+    // for random point gen
+    unsigned char x[crypto_core_ed25519_UNIFORMBYTES];
+    unsigned char random_point[crypto_core_ed25519_BYTES];
+//    unsigned char random_scal[crypto_core_ed25519_SCALARBYTES];
+
+    unsigned char multiscalar_scalars[200 * 6 * 32];
+    ge25519_p3 multiscalar_bases[200 * 6];
+    ge25519_p2 expected_zero;
+    for (int i = 0; i < 200 * 6; i++) {
+        randombytes_buf(x, sizeof x);
+        crypto_core_ed25519_from_uniform(random_point, x);
+        crypto_core_ed25519_scalar_random(&multiscalar_scalars[32 * i]);
+        ge25519_frombytes(&multiscalar_bases[i], random_point);
+    }
+
+    clock_t t_api;
+    t_api = clock();
+    /* calculate V = s*H -  c*Gamma */
+    ge25519_multi_scalarmult_200_vartime(&expected_zero, multiscalar_scalars, multiscalar_bases);
+    t_api = clock() - t_api;
+
+    return ((double) t_api) / (CLOCKS_PER_SEC * 200);
 }
 
 int internal_scalarmul(unsigned char *point, const unsigned char *scalar) {
@@ -218,7 +275,7 @@ vrf_prove_batch_compatible(unsigned char pi[128], const ge25519_p3 *Y_point,
     unsigned char h_string[32], k_scalar[32], c_scalar[32];
     ge25519_p3    H_point, Gamma_point, kB_point, kH_point;
 
-    _vrf_ietfdraft03_hash_to_curve_elligator2_25519(h_string, Y_point, alpha, alphalen);
+    _vrf_ietfdraft03_hash_to_curve_try_inc(h_string, Y_point, alpha, alphalen);
     ge25519_frombytes(&H_point, h_string);
 
     ge25519_scalarmult(&Gamma_point, x_scalar, &H_point); /* Gamma = x*H */

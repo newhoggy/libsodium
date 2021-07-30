@@ -107,6 +107,12 @@ SODIUM_EXPORT
 int api_scalarmul(unsigned char *point, const unsigned char *scalar);
 
 SODIUM_EXPORT
+double time_per_proof(const unsigned int size);
+
+SODIUM_EXPORT
+double time_per_proof_200();
+
+SODIUM_EXPORT
 int internal_scalarmul(unsigned char *point, const unsigned char *scalar);
 
 // Verify a VRF proof (for a given a public key and message) and validate the

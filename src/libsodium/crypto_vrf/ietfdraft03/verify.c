@@ -33,6 +33,8 @@ SOFTWARE.
 #include "vrf_ietfdraft03.h"
 
 static const unsigned char THREE = 0x03;
+static const unsigned char ONE_SCALAR[32] = {1};
+static const unsigned char ZERO_POINT[32] = {1};
 
 /* Convert a VRF proof pi into a VRF output hash beta per draft spec section 5.2.
  * This function does not verify the proof! For an untrusted proof, instead call
@@ -215,10 +217,10 @@ vrf_verify_batch_compatible(const ge25519_p3 *Y_point, const unsigned char pi[12
 {
     /* Note: c fits in 16 bytes, but ge25519_scalarmult expects a 32-byte scalar.
      * Similarly, s_scalar fits in 32 bytes but sc25519_reduce takes in 64 bytes. */
-    unsigned char h_string[32], c_scalar[32], cn_scalar[32], s_scalar[64], computed_U_bytes[32], computed_V_bytes[32], U_bytes[32], V_bytes[32];
+    unsigned char h_string[32], c_scalar[32], mone[32], cn_scalar[32], s_scalar[64], computed_U_bytes[32], computed_V_bytes[32], U_bytes[32], V_bytes[32];
 
     ge25519_p3     H_point, Gamma_point, tmp_p3_point, U_point, V_point;
-    ge25519_p2               computed_U, computed_V;
+    ge25519_p2               computed_U, expected_zero;
     ge25519_p1p1   tmp_p1p1_point;
     ge25519_cached tmp_cached_point;
 
@@ -234,32 +236,40 @@ vrf_verify_batch_compatible(const ge25519_p3 *Y_point, const unsigned char pi[12
     memset(s_scalar+32, 0, 32);
     sc25519_reduce(s_scalar);
 
-    _vrf_ietfdraft03_hash_points(c_scalar, &H_point, &Gamma_point, &U_point, &V_point);
-
     _vrf_ietfdraft03_hash_to_curve_try_inc(h_string, Y_point, alpha, alphalen);
     ge25519_frombytes(&H_point, h_string);
-    crypto_core_ed25519_scalar_negate(cn_scalar, c_scalar); /* negate scalar c */
 
-    /* calculate U = s*B - c*Y */
-    ge25519_double_scalarmult_vartime(&computed_U, cn_scalar, Y_point, s_scalar);
+    _vrf_ietfdraft03_hash_points_opt(c_scalar, &H_point, &Gamma_point, pi + 32, pi + 64);
+    memset(c_scalar+16, 0, 16);
 
-    const unsigned char **multiscalar_scalars = (const unsigned char **)malloc(2 * sizeof(const unsigned char *));
+    crypto_core_ed25519_scalar_negate(cn_scalar, s_scalar); /* negate scalar s */
+
+//    /* calculate U = s*B - c*Y */
+////    ge25519_double_scalarmult_vartime(&computed_U, cn_scalar, Y_point, s_scalar);
+
+    const unsigned char **multiscalar_scalars = (const unsigned char **)malloc(6 * sizeof(const unsigned char *));
     multiscalar_scalars[0] = cn_scalar;
-    multiscalar_scalars[1] = s_scalar;
+    multiscalar_scalars[1] = c_scalar;
+    multiscalar_scalars[2] = cn_scalar;
+    multiscalar_scalars[3] = ONE_SCALAR;
+    multiscalar_scalars[4] = c_scalar;
+    multiscalar_scalars[5] = ONE_SCALAR;
 
-    ge25519_p3 multiscalar_bases[2] = {Gamma_point, H_point};
+    ge25519_p3 multiscalar_bases[5] = {Gamma_point, H_point, V_point, *Y_point, U_point};
 
     /* calculate V = s*H -  c*Gamma */
-    ge25519_multi_scalarmult_vartime(&computed_V, multiscalar_scalars, multiscalar_bases, 2);
+    ge25519_multi_scalarmult_vartime(&expected_zero, multiscalar_scalars, multiscalar_bases, 6, 1);
 
-    ge25519_tobytes(computed_U_bytes, &computed_U);
-    ge25519_tobytes(computed_V_bytes, &computed_V);
+    ge25519_tobytes(computed_V_bytes, &expected_zero);
 
-    ge25519_p3_tobytes(U_bytes, &U_point);
-    ge25519_p3_tobytes(V_bytes, &V_point);
+    free(multiscalar_scalars);
 
-
-    return crypto_verify_32(computed_U_bytes, U_bytes) && crypto_verify_32(computed_V_bytes, V_bytes);
+    // todo: we prob don't need constant time operations here
+    if (crypto_verify_32(computed_V_bytes, ZERO_POINT) == -1) {
+        return -1;
+    } else {
+        return 0;
+    }
 }
 
 /* Verify a proof per draft section 5.3. Return 0 on success, -1 on failure.
@@ -310,7 +320,7 @@ vrf_verify_try_inc(const ge25519_p3 *Y_point, const unsigned char pi[80],
     ge25519_p3 multiscalar_bases[2] = {Gamma_point, H_point};
 
     /* calculate V = s*H -  c*Gamma */
-    ge25519_multi_scalarmult_vartime(&V_point, multiscalar_scalars, multiscalar_bases, 2);
+    ge25519_multi_scalarmult_vartime(&V_point, multiscalar_scalars, multiscalar_bases, 2, 0);
 
     ge25519_tobytes(U_bytes, &U_point);
     ge25519_tobytes(V_bytes, &V_point);
@@ -419,7 +429,7 @@ vrf_verify_optimised_blake(const ge25519_p3 *Y_point, const unsigned char pi[80]
     ge25519_p3 multiscalar_bases[2] = {Gamma_point, H_point};
 
     /* calculate V = s*H -  c*Gamma */
-    ge25519_multi_scalarmult_vartime(&V_point, multiscalar_scalars, multiscalar_bases, 2);
+    ge25519_multi_scalarmult_vartime(&V_point, multiscalar_scalars, multiscalar_bases, 2, 0);
 
     ge25519_tobytes(U_bytes, &U_point);
     ge25519_tobytes(V_bytes, &V_point);

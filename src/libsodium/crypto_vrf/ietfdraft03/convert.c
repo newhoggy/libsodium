@@ -197,8 +197,8 @@ _vrf_ietfdraft03_hash_points_blake(unsigned char c[16], const ge25519_p3 *P1,
  * Constant time. For optimised calls*/
 void
 _vrf_ietfdraft03_hash_points_opt(unsigned char c[16], const ge25519_p3 *P1,
-                             const ge25519_p3 *P2, unsigned char P3[32],
-                             unsigned char P4[32])
+                             const ge25519_p3 *P2, const unsigned char P3[32],
+                             const unsigned char P4[32])
 {
     unsigned char str[2+32*4], c1[64];
 
@@ -261,8 +261,8 @@ int
 _vrf_ietfdraft03_decode_proof_batch_compatible(ge25519_p3 *Gamma, ge25519_p3 *U, ge25519_p3 *V,
                               unsigned char s[32], const unsigned char pi[128])
 {
-    if (_vrf_ietfdraft03_string_to_point(Gamma, pi) != 0 || _vrf_ietfdraft03_string_to_point(U, pi + 32) != 0
-    || _vrf_ietfdraft03_string_to_point(V, pi + 64) != 0)
+    if (_vrf_ietfdraft03_string_to_point(Gamma, pi) != 0 || ge25519_frombytes(U, pi + 32) != 0
+    || ge25519_frombytes(V, pi + 64) != 0)
     {
         return -1;
     }
