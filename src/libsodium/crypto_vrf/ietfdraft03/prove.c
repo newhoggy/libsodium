@@ -131,32 +131,6 @@ double time_per_proof(const unsigned int size) {
     return ((double) t_api) / (CLOCKS_PER_SEC * size);
 }
 
-
-double time_per_proof_200() {
-    // for random point gen
-    unsigned char x[crypto_core_ed25519_UNIFORMBYTES];
-    unsigned char random_point[crypto_core_ed25519_BYTES];
-//    unsigned char random_scal[crypto_core_ed25519_SCALARBYTES];
-
-    unsigned char multiscalar_scalars[200 * 6 * 32];
-    ge25519_p3 multiscalar_bases[200 * 6];
-    ge25519_p2 expected_zero;
-    for (int i = 0; i < 200 * 6; i++) {
-        randombytes_buf(x, sizeof x);
-        crypto_core_ed25519_from_uniform(random_point, x);
-        crypto_core_ed25519_scalar_random(&multiscalar_scalars[32 * i]);
-        ge25519_frombytes(&multiscalar_bases[i], random_point);
-    }
-
-    clock_t t_api;
-    t_api = clock();
-    /* calculate V = s*H -  c*Gamma */
-    ge25519_multi_scalarmult_200_vartime(&expected_zero, multiscalar_scalars, multiscalar_bases);
-    t_api = clock() - t_api;
-
-    return ((double) t_api) / (CLOCKS_PER_SEC * 200);
-}
-
 int internal_scalarmul(unsigned char *point, const unsigned char *scalar) {
     unsigned char result_bytes[32];
     ge25519_p3 result, point_in;

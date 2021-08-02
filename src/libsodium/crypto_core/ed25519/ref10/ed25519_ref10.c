@@ -937,56 +937,6 @@ ge25519_multi_scalarmult_vartime(ge25519_p2 *r, const unsigned char *scalars[32]
     free(precomputed_bases);
 }
 
-// multiscalar of 200 elements (wondering if I'm having trouble with malloc for high sizes)
-void
-ge25519_multi_scalarmult_200_vartime(ge25519_p2 *r, const unsigned char *scalars,
-                                 const ge25519_p3 *bases)
-{
-    // dynamically create array of pointers of size `size`.
-    signed char    scalar_slides[200 * 256];
-    ge25519_cached precomputed_bases[200 * 8]; /* A,3A,5A,7A,9A,11A,13A,15A */
-
-//    signed char    scalar_slide[256];
-//    ge25519_cached point_cached[8];
-    ge25519_p1p1   t;
-    ge25519_p3     u;
-    int            i, j;
-
-    for (i = 0; i < 200; i++) {
-        slide_vartime(&scalar_slides[i * 256], &scalars[i * 32]);
-        point_precomputation(&precomputed_bases[i * 8], &bases[i]);
-    }
-
-    ge25519_p2_0(r);
-
-    // todo: it is probably reasonable to skip this check
-//    bool check = false;
-//    for (i = 255; i >= 0; --i) {
-//        for (int j = 0; j < size; j++) {
-//            check |= scalar_slides[j][i];
-//        }
-//        if (check) {
-//            break;
-//        }
-//    }
-
-    for (i = 255; i >= 0; --i) {
-        ge25519_p2_dbl(&t, r);
-
-        for (j = 0; j < 200; j++) {
-            if (scalar_slides[j * 256 + i] > 0) {
-                ge25519_p1p1_to_p3(&u, &t);
-                ge25519_add(&t, &u, &precomputed_bases[j * 8 + scalar_slides[j * 256 + i] / 2]);
-            } else if (scalar_slides[j * 256 + i] < 0) {
-                ge25519_p1p1_to_p3(&u, &t);
-                ge25519_sub(&t, &u, &precomputed_bases[j * 8 + (-scalar_slides[j * 256 + i]) / 2]);
-            }
-        }
-
-        ge25519_p1p1_to_p2(r, &t);
-    }
-}
-
 /*
  h = a * p
  where a = a[0]+256*a[1]+...+256^31 a[31]
