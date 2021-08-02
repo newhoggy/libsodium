@@ -26,6 +26,7 @@ SOFTWARE.
 #include "crypto_verify_16.h"
 #include "crypto_vrf_ietfdraft03.h"
 #include "private/ed25519_ref10.h"
+#include "crypto_core_ed25519.h"
 #include "vrf_ietfdraft03.h"
 
 static const unsigned char THREE = 0x03;
@@ -70,7 +71,7 @@ crypto_vrf_ietfdraft03_proof_to_hash(unsigned char beta[crypto_vrf_ietfdraft03_O
     hash_input[0] = SUITE;
     hash_input[1] = THREE;
     multiply_by_cofactor(&Gamma_point);
-    _vrf_ietfdraft03_point_to_string(hash_input+2, &Gamma_point);
+    _vrf_ietfdraft03_p3_to_string(hash_input+2, &Gamma_point);
     crypto_hash_sha512(beta, hash_input, sizeof hash_input);
 
     return 0;
@@ -108,7 +109,9 @@ crypto_vrf_ietfdraft03_is_valid_key(const unsigned char pk[crypto_vrf_ietfdraft0
 /* Verify a proof per draft section 5.3. Return 0 on success, -1 on failure.
  * We assume Y_point has passed public key validation already.
  * Assuming verification succeeds, runtime does not depend on the message alpha
- * (but does depend on its length alphalen)
+ * (but does depend on its length alphalen).
+ *
+ * We use variable time operations to compute points U and V.
  */
 static int
 vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[80],
@@ -116,9 +119,10 @@ vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[80],
 {
     /* Note: c fits in 16 bytes, but ge25519_scalarmult expects a 32-byte scalar.
      * Similarly, s_scalar fits in 32 bytes but sc25519_reduce takes in 64 bytes. */
-    unsigned char h_string[32], c_scalar[32], s_scalar[64], cprime[16];
+    unsigned char h_string[32], c_scalar[32], cn_scalar[32], s_scalar[64], cprime[16];
 
-    ge25519_p3     H_point, Gamma_point, U_point, V_point, tmp_p3_point;
+    ge25519_p2     U_point, V_point;
+    ge25519_p3     H_point, Gamma_point, tmp_p3_point;
     ge25519_p1p1   tmp_p1p1_point;
     ge25519_cached tmp_cached_point;
 
@@ -141,21 +145,15 @@ vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[80],
     _vrf_ietfdraft03_hash_to_curve_elligator2_25519(h_string, Y_point, alpha, alphalen);
     ge25519_frombytes(&H_point, h_string);
 
+    crypto_core_ed25519_scalar_negate(cn_scalar, c_scalar); /* negate scalar c */
+
     /* calculate U = s*B - c*Y */
-    ge25519_scalarmult(&tmp_p3_point, c_scalar, Y_point); /* tmp_p3 = c*Y */
-    ge25519_p3_to_cached(&tmp_cached_point, &tmp_p3_point); /* tmp_cached = c*Y */
-    ge25519_scalarmult_base(&tmp_p3_point, s_scalar); /* tmp_p3 = s*B */
-    ge25519_sub(&tmp_p1p1_point, &tmp_p3_point, &tmp_cached_point); /* tmp_p1p1 = tmp_p3 - tmp_cached = s*B - c*Y */
-    ge25519_p1p1_to_p3(&U_point, &tmp_p1p1_point); /* U = s*B - c*Y */
+    ge25519_double_scalarmult_vartime(&U_point, cn_scalar, Y_point, s_scalar);
 
     /* calculate V = s*H -  c*Gamma */
-    ge25519_scalarmult(&tmp_p3_point, c_scalar, &Gamma_point); /* tmp_p3 = c*Gamma */
-    ge25519_p3_to_cached(&tmp_cached_point, &tmp_p3_point); /* tmp_cached = c*Gamma */
-    ge25519_scalarmult(&tmp_p3_point, s_scalar, &H_point); /* tmp_p3 = s*H */
-    ge25519_sub(&tmp_p1p1_point, &tmp_p3_point, &tmp_cached_point); /* tmp_p1p1 = tmp_p3 - tmp_cached = s*H - c*Gamma */
-    ge25519_p1p1_to_p3(&V_point, &tmp_p1p1_point); /* V = s*H - c*Gamma */
+    ge25519_double_scalarmult_vartime_variable(&V_point, cn_scalar, &Gamma_point, s_scalar, &H_point);
 
-    _vrf_ietfdraft03_hash_points(cprime, &H_point, &Gamma_point, &U_point, &V_point);
+    _vrf_ietfdraft03_hash_points_p2(cprime, &H_point, &Gamma_point, &U_point, &V_point);
     return crypto_verify_16(c_scalar, cprime);
 }
 

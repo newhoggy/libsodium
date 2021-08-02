@@ -30,13 +30,22 @@ SOFTWARE.
 static const unsigned char ONE = 0x01;
 static const unsigned char TWO = 0x02;
 
-/* Encode elliptic curve point into a 32-byte octet string per RFC8032 section
+/* Encode elliptic curve point in p3 form into a 32-byte octet string per RFC8032 section
  * 5.1.2.
  */
 void
-_vrf_ietfdraft03_point_to_string(unsigned char string[32], const ge25519_p3 *point)
+_vrf_ietfdraft03_p3_to_string(unsigned char string[32], const ge25519_p3 *point)
 {
     ge25519_p3_tobytes(string, point);
+}
+
+/* Encode elliptic curve point in p2 form into a 32-byte octet string per RFC8032 section
+ * 5.1.2.
+ */
+void
+_vrf_ietfdraft03_p2_to_string(unsigned char string[32], const ge25519_p2 *point)
+{
+    ge25519_tobytes(string, point);
 }
 
 /* Decode elliptic curve point from 32-byte octet string per RFC8032 section
@@ -71,7 +80,7 @@ _vrf_ietfdraft03_hash_to_curve_elligator2_25519(unsigned char H_string[32],
     crypto_hash_sha512_state hs;
     unsigned char            Y_string[32], r_string[64];
 
-    _vrf_ietfdraft03_point_to_string(Y_string, Y_point);
+    _vrf_ietfdraft03_p3_to_string(Y_string, Y_point);
 
     /* r = first 32 bytes of SHA512(suite || 0x01 || Y || alpha) */
     crypto_hash_sha512_init(&hs);
@@ -86,7 +95,7 @@ _vrf_ietfdraft03_hash_to_curve_elligator2_25519(unsigned char H_string[32],
 }
 
 /* Subroutine specified in draft spec section 5.4.3.
- * Hashes four points to a 16-byte string.
+ * Hashes four points in p3 shape to a 16-byte string.
  * Constant time. */
 void
 _vrf_ietfdraft03_hash_points(unsigned char c[16], const ge25519_p3 *P1,
@@ -97,10 +106,32 @@ _vrf_ietfdraft03_hash_points(unsigned char c[16], const ge25519_p3 *P1,
 
     str[0] = SUITE;
     str[1] = TWO;
-    _vrf_ietfdraft03_point_to_string(str+2+32*0, P1);
-    _vrf_ietfdraft03_point_to_string(str+2+32*1, P2);
-    _vrf_ietfdraft03_point_to_string(str+2+32*2, P3);
-    _vrf_ietfdraft03_point_to_string(str+2+32*3, P4);
+    _vrf_ietfdraft03_p3_to_string(str+2+32*0, P1);
+    _vrf_ietfdraft03_p3_to_string(str+2+32*1, P2);
+    _vrf_ietfdraft03_p3_to_string(str+2+32*2, P3);
+    _vrf_ietfdraft03_p3_to_string(str+2+32*3, P4);
+    crypto_hash_sha512(c1, str, sizeof str);
+    memmove(c, c1, 16);
+    sodium_memzero(c1, 64);
+}
+
+/* Subroutine specified in draft spec section 5.4.3.
+ * Hashes two points in p3 shape, and two points in p2
+ * shape to a 16-byte string.
+ * Constant time. */
+void
+_vrf_ietfdraft03_hash_points_p2(unsigned char c[16], const ge25519_p3 *P1,
+                             const ge25519_p3 *P2, const ge25519_p2 *P3,
+                             const ge25519_p2 *P4)
+{
+    unsigned char str[2+32*4], c1[64];
+
+    str[0] = SUITE;
+    str[1] = TWO;
+    _vrf_ietfdraft03_p3_to_string(str+2+32*0, P1);
+    _vrf_ietfdraft03_p3_to_string(str+2+32*1, P2);
+    _vrf_ietfdraft03_p2_to_string(str+2+32*2, P3);
+    _vrf_ietfdraft03_p2_to_string(str+2+32*3, P4);
     crypto_hash_sha512(c1, str, sizeof str);
     memmove(c, c1, 16);
     sodium_memzero(c1, 64);

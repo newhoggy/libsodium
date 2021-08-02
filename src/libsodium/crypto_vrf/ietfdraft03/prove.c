@@ -107,7 +107,7 @@ vrf_prove(unsigned char pi[80], const ge25519_p3 *Y_point,
     memset(c_scalar+16, 0, 16); /* zero the remaining 16 bytes of c_scalar */
 
     /* output pi */
-    _vrf_ietfdraft03_point_to_string(pi, &Gamma_point); /* pi[0:32] = point_to_string(Gamma) */
+    _vrf_ietfdraft03_p3_to_string(pi, &Gamma_point); /* pi[0:32] = point_to_string(Gamma) */
     memmove(pi+32, c_scalar, 16); /* pi[32:48] = c (16 bytes) */
     sc25519_muladd(pi+48, c_scalar, x_scalar, k_scalar); /* pi[48:80] = s = c*x + k (mod q) */
 
