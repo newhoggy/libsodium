@@ -90,7 +90,6 @@ _vrf_ietfdraft03_hash_to_curve_elligator2_25519(unsigned char H_string[32],
     crypto_hash_sha512_update(&hs, alpha, alphalen);
     crypto_hash_sha512_final(&hs, r_string);
 
-    r_string[31] &= 0x7f; /* clear sign bit */
     ge25519_from_uniform(H_string, r_string); /* elligator2 */
 }
 
