@@ -2,6 +2,7 @@
 #include <limits.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "crypto_hash_sha512.h"
 #include "crypto_sign_ed25519.h"
@@ -9,6 +10,22 @@
 #include "sign_ed25519_ref10.h"
 #include "private/ed25519_ref10.h"
 #include "utils.h"
+
+static void
+multiply_by_cofactor(ge25519_p3 *point) {
+    ge25519_cached tmp_point;
+    ge25519_p1p1   tmp2_point;
+
+    ge25519_p3_to_cached(&tmp_point, point);     /* tmp = input */
+    ge25519_add(&tmp2_point, point, &tmp_point); /* tmp2 = 2*input */
+    ge25519_p1p1_to_p3(point, &tmp2_point);      /* point = 2*input */
+    ge25519_p3_to_cached(&tmp_point, point);     /* tmp = 2*input */
+    ge25519_add(&tmp2_point, point, &tmp_point); /* tmp2 = 4*input */
+    ge25519_p1p1_to_p3(point, &tmp2_point);      /* point = 4*input */
+    ge25519_p3_to_cached(&tmp_point, point);     /* tmp = 4*input */
+    ge25519_add(&tmp2_point, point, &tmp_point); /* tmp2 = 8*input */
+    ge25519_p1p1_to_p3(point, &tmp2_point);      /* point = 8*input */
+}
 
 int
 _crypto_sign_ed25519_verify_detached(const unsigned char *sig,
@@ -47,11 +64,27 @@ _crypto_sign_ed25519_verify_detached(const unsigned char *sig,
     crypto_hash_sha512_final(&hs, h);
     sc25519_reduce(h);
 
+    printf("libsodium: ");
+    for (int i = 0; i<32; i++) {
+        printf("%c", h[i]);
+    }
+    printf("\n");
+
     ge25519_double_scalarmult_vartime(&R, h, &A, sig + 32);
     ge25519_tobytes(rcheck, &R);
 
-    return crypto_verify_32(rcheck, sig) | (-(rcheck == sig)) |
-           sodium_memcmp(sig, rcheck, 32);
+    ge25519_p3               new_R, new_Sig;
+    unsigned char new_sig_bytes[32];
+    ge25519_frombytes(&new_R, rcheck);
+    multiply_by_cofactor(&new_R);
+    ge25519_frombytes(&new_Sig, sig);
+    multiply_by_cofactor(&new_Sig);
+
+    ge25519_p3_tobytes(rcheck, &new_R);
+    ge25519_p3_tobytes(new_sig_bytes, &new_Sig);
+
+    return crypto_verify_32(rcheck, new_sig_bytes) | (-(rcheck == new_sig_bytes)) |
+           sodium_memcmp(new_sig_bytes, rcheck, 32);
 }
 
 /*
@@ -72,11 +105,11 @@ int crypto_sign_ed25519_prepare_sig_and_pk(
     return -1;
     }
 
-    mul_torsion_safe(&pk_torsion_safe, &pk);
-    mul_torsion_safe(&announcement_torsion_safe, &announcement);
+//    mul_torsion_safe(&pk_torsion_safe, &pk);
+//    mul_torsion_safe(&announcement_torsion_safe, &announcement);
 
-    ge25519_p3_tobytes(ge25519_pk, &pk_torsion_safe);
-    ge25519_p3_tobytes(ge25519_announcement, &announcement_torsion_safe);
+    ge25519_p3_tobytes(ge25519_pk, &pk);
+    ge25519_p3_tobytes(ge25519_announcement, &announcement);
 
     return 0;
 }
