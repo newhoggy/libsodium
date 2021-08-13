@@ -35,9 +35,12 @@ void _vrf_ietfdraft09_point_to_string(unsigned char string[32],
 int _vrf_ietfdraft09_string_to_point(ge25519_p3 *point,
 				     const unsigned char string[32]);
 
-int _vrf_ietfdraft09_decode_proof(ge25519_p3 *Gamma, unsigned char c[16],
-				  unsigned char s[32],
-				  const unsigned char pi[80]);
+//int _vrf_ietfdraft09_decode_proof(ge25519_p3 *Gamma, unsigned char c[16],
+//				  unsigned char s[32],
+//				  const unsigned char pi[80]);
+
+int _vrf_ietfdraft09_decode_proof(ge25519_p3 *Gamma, unsigned char U[32], unsigned char V[32],
+                                               unsigned char s[32], const unsigned char pi[128]);
 
 void _vrf_ietfdraft09_hash_to_curve_try_inc(unsigned char H_string[32],
 						     const ge25519_p3 *Y_point,

@@ -25,7 +25,7 @@ size_t crypto_vrf_ietfdraft09_secretkeybytes(void);
 SODIUM_EXPORT
 size_t crypto_vrf_ietfdraft09_seedbytes(void);
 
-#define crypto_vrf_ietfdraft09_PROOFBYTES 80U
+#define crypto_vrf_ietfdraft09_PROOFBYTES 128U
 SODIUM_EXPORT
 size_t crypto_vrf_ietfdraft09_proofbytes(void);
 

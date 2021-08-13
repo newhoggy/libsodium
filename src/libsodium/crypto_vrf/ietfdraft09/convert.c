@@ -143,19 +143,20 @@ _vrf_ietfdraft09_hash_points(unsigned char c[16], const ge25519_p3 *P1,
     sodium_memzero(c1, 64);
 }
 
-/* Decode an 80-byte proof pi into a point gamma, a 16-byte scalar c, and a
- * 32-byte scalar s, as specified in IETF draft section 5.4.4.
+/* Decode an 128-byte batch compatible proof pi into a point gamma, a point U, a point V, and a
+ * 32-byte scalar s.
  * Returns 0 on success, nonzero on failure.
  */
 int
-_vrf_ietfdraft09_decode_proof(ge25519_p3 *Gamma, unsigned char c[16],
-			      unsigned char s[32], const unsigned char pi[80])
+_vrf_ietfdraft09_decode_proof(ge25519_p3 *Gamma, unsigned char U[32], unsigned char V[32],
+                                               unsigned char s[32], const unsigned char pi[128])
 {
-    /* gamma = decode_point(pi[0:32]) */
-    if (_vrf_ietfdraft09_string_to_point(Gamma, pi) != 0) {
-	return -1;
+    if (_vrf_ietfdraft09_string_to_point(Gamma, pi) != 0)
+    {
+        return -1;
     }
-    memmove(c, pi+32, 16); /* c = pi[32:48] */
-    memmove(s, pi+48, 32); /* s = pi[48:80] */
+    memmove(U, pi+32, 32);
+    memmove(V, pi+64, 32);
+    memmove(s, pi+96, 32);
     return 0;
 }
