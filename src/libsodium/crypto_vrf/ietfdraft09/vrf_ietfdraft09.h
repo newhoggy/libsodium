@@ -51,7 +51,7 @@ _vrf_ietfdraft09_hash_to_curve_elligator2_25519_ietf(unsigned char H_string[32],
                                                      const unsigned long long alphalen);
 
 void _vrf_ietfdraft09_hash_points(unsigned char c[16], const ge25519_p3 *P1,
-				  const ge25519_p3 *P2, const ge25519_p3 *P3,
-				  const ge25519_p3 *P4);
+                                  const ge25519_p3 *P2, const unsigned char P3[32],
+                                  const unsigned char P4[32]);
 
 #endif
