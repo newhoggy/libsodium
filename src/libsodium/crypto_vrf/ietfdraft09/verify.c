@@ -25,7 +25,7 @@ SOFTWARE.
 */
 
 #include <string.h>
-#include <stdio.h>
+#include <stdlib.h>
 
 #include "crypto_hash_sha512.h"
 #include "crypto_verify_32.h"
@@ -125,7 +125,7 @@ vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[128],
 {
     /* Note: c fits in 16 bytes, but ge25519_scalarmult expects a 32-byte scalar.
      * Similarly, s_scalar fits in 32 bytes but sc25519_reduce takes in 64 bytes. */
-    unsigned char h_string[32], cn_scalar[32], c_scalar[32], s_scalar[64], cprime[16],
+    unsigned char h_string[32], cn_scalar[32], c_scalar[32], s_scalar[64],
     expected_U_bytes[32], expected_V_bytes[32], U_bytes[32], V_bytes[32];
 
     ge25519_p2               U_point, V_point;
@@ -145,7 +145,10 @@ vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[128],
     memset(s_scalar+32, 0, 32);
     sc25519_reduce(s_scalar);
 
-    _vrf_ietfdraft09_hash_to_curve_try_inc(h_string, Y_point, alpha, alphalen);
+    if (_vrf_ietfdraft09_hash_to_curve_try_inc(h_string, Y_point, alpha, alphalen) == -1) {
+        // this should happen with probability 1/2^64, so practically speaking, never. We can always increment the limit.
+        abort();
+    }
     ge25519_frombytes(&H_point, h_string);
 
     _vrf_ietfdraft09_hash_points(c_scalar, &H_point, &Gamma_point, expected_U_bytes, expected_V_bytes);
@@ -165,32 +168,12 @@ vrf_verify(const ge25519_p3 *Y_point, const unsigned char pi[128],
     ge25519_tobytes(U_bytes, &U_point);
     ge25519_tobytes(V_bytes, &V_point);
 
-//
-//    printf("u_bytes: ");
-//    for (int i = 0; i<32; i++) {
-//        printf("%02x", U_bytes[i]);
-//    }
-//    printf("\n");
-//
-//    printf("expected_u_bytes: ");
-//    for (int i = 0; i<32; i++) {
-//        printf("%02x", expected_U_bytes[i]);
-//    }
-//    printf("\n");
-//
-//    printf("v_bytes: ");
-//    for (int i = 0; i<32; i++) {
-//        printf("%02x", V_bytes[i]);
-//    }
-//    printf("\n");
-//
-//    printf("expected_v_bytes: ");
-//    for (int i = 0; i<32; i++) {
-//        printf("%02x", expected_V_bytes[i]);
-//    }
-//    printf("\n");
-    // todo: no need of constant time verif
-    return crypto_verify_32(U_bytes, expected_U_bytes) && crypto_verify_32(V_bytes, expected_V_bytes);
+    for (int i = 0; i<32; i++) {
+        if (U_bytes[i] != expected_U_bytes[i] || V_bytes[i] != expected_V_bytes[i]) {
+            return -1;
+        }
+    }
+    return 0;
 }
 
 /* Verify a VRF proof (for a given a public key and message) and validate the

@@ -25,6 +25,7 @@ SOFTWARE.
 */
 
 #include <string.h>
+#include <stdlib.h>
 
 #include "crypto_hash_sha512.h"
 #include "crypto_vrf_ietfdraft09.h"
@@ -100,7 +101,10 @@ vrf_prove(unsigned char pi[128], const ge25519_p3 *Y_point,
     unsigned char h_string[32], k_scalar[32], c_scalar[32];
     ge25519_p3    H_point, Gamma_point, kB_point, kH_point;
 
-    _vrf_ietfdraft09_hash_to_curve_try_inc(h_string, Y_point, alpha, alphalen);
+    if (_vrf_ietfdraft09_hash_to_curve_try_inc(h_string, Y_point, alpha, alphalen) == -1) {
+        // this should happen with probability 1/2^64, so practically speaking, never. We can always increment the limit.
+        abort();
+    }
 
     ge25519_frombytes(&H_point, h_string);
 

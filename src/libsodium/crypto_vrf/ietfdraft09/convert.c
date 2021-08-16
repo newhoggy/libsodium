@@ -36,12 +36,6 @@ static const unsigned char ZERO = 0x00;
 static const unsigned char ONE = 0x01;
 static const unsigned char TWO = 0x02;
 static const unsigned char FOUR = 0x04;
-static const unsigned char DST[] = "ECVRF_edwards25519_XMD:SHA-512_ELL2_NU_";
-static const unsigned char LEN_DST = 0x28;
-// 128 is the block size of SHA-512
-static const unsigned char Z_pad[128] = {0x00};
-static const unsigned char LIBSTR[2] = {0x00, 0x30};
-static const unsigned char NINETEEN = {0x13};
 
 /* Utility function to multiply a point by the cofactor (8) in place. */
 static void
@@ -90,7 +84,7 @@ _vrf_ietfdraft09_string_to_point(ge25519_p3 *point, const unsigned char string[3
 /*
  * Computing the `hash_to_curve` using try and increment
  */
-void
+int
 _vrf_ietfdraft09_hash_to_curve_try_inc(unsigned char H_string[32],
                                        const ge25519_p3 *Y_point,
                                        const unsigned char *alpha,
@@ -101,9 +95,9 @@ _vrf_ietfdraft09_hash_to_curve_try_inc(unsigned char H_string[32],
     _vrf_ietfdraft09_point_to_string(Y_string, Y_point);
 
     ge25519_p3 p3;
-    int check = 1;
+    int check = 64;
     unsigned char value = ZERO;
-    while (check != 0) {
+    while (check > 0) {
         crypto_hash_sha512_state hs;
         crypto_hash_sha512_init(&hs);
         crypto_hash_sha512_update(&hs, &SUITE, 1);
@@ -113,12 +107,17 @@ _vrf_ietfdraft09_hash_to_curve_try_inc(unsigned char H_string[32],
         crypto_hash_sha512_update(&hs, &value, 1);
         crypto_hash_sha512_update(&hs, &ZERO, 1);
         crypto_hash_sha512_final(&hs, r_string);
-        value += ONE;
-        check = ge25519_frombytes(&p3, r_string);
-    }
 
-    multiply_by_cofactor(&p3);
-    ge25519_p3_tobytes(H_string, &p3);
+        if (ge25519_frombytes(&p3, r_string) == 0) {
+            multiply_by_cofactor(&p3);
+            ge25519_p3_tobytes(H_string, &p3);
+            return 0;
+        };
+
+        value += ONE;
+        check -= 1;
+    }
+    return -1;
 }
 
 /* Subroutine specified in draft spec section 5.4.3.

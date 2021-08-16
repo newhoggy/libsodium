@@ -42,10 +42,12 @@ int _vrf_ietfdraft09_string_to_point(ge25519_p3 *point,
 int _vrf_ietfdraft09_decode_proof(ge25519_p3 *Gamma, unsigned char U[32], unsigned char V[32],
                                                unsigned char s[32], const unsigned char pi[128]);
 
-void _vrf_ietfdraft09_hash_to_curve_try_inc(unsigned char H_string[32],
+
+int _vrf_ietfdraft09_hash_to_curve_try_inc(unsigned char H_string[32],
 						     const ge25519_p3 *Y_point,
 						     const unsigned char *alpha,
-						     const unsigned long long alphalen);
+						     const unsigned long long alphalen)
+            __attribute__ ((warn_unused_result));
 
 void
 _vrf_ietfdraft09_hash_to_curve_elligator2_25519_ietf(unsigned char H_string[32],
