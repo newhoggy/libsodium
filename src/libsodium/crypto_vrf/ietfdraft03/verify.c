@@ -245,7 +245,7 @@ vrf_verify_batch_compatible(const ge25519_p3 *Y_point, const unsigned char pi[12
     crypto_core_ed25519_scalar_negate(cn_scalar, s_scalar); /* negate scalar s */
 
 //    /* calculate U = s*B - c*Y */
-////    ge25519_double_scalarmult_vartime(&computed_U, cn_scalar, Y_point, s_scalar);
+//    ge25519_double_scalarmult_vartime(&computed_U, cn_scalar, Y_point, s_scalar);
 
     const unsigned char **multiscalar_scalars = (const unsigned char **)malloc(6 * sizeof(const unsigned char *));
     multiscalar_scalars[0] = cn_scalar;
@@ -313,7 +313,7 @@ vrf_verify_try_inc(const ge25519_p3 *Y_point, const unsigned char pi[80],
     /* calculate U = s*B - c*Y */
     ge25519_double_scalarmult_vartime(&U_point, cn_scalar, Y_point, s_scalar);
 
-/* calculate V = s*H -  c*Gamma */
+    /* calculate V = s*H -  c*Gamma */
     ge25519_double_scalarmult_vartime_variable(&V_point, cn_scalar, &Gamma_point, s_scalar, &H_point);
 
     ge25519_tobytes(U_bytes, &U_point);

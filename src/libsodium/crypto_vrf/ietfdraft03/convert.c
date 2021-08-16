@@ -125,21 +125,20 @@ _vrf_ietfdraft03_hash_to_curve_try_inc(unsigned char H_string[32],
 
     _vrf_ietfdraft03_point_to_string(Y_string, Y_point);
 
-    crypto_hash_sha512_init(&hs);
-    crypto_hash_sha512_update(&hs, &SUITE, 1);
-    crypto_hash_sha512_update(&hs, &ONE, 1);
-    crypto_hash_sha512_update(&hs, Y_string, 32);
-    crypto_hash_sha512_update(&hs, alpha, alphalen);
-
     ge25519_p3 p3;
     int check = 1;
     unsigned char value = ONE;
     while (check != 0) {
+        crypto_hash_sha512_init(&hs);
+        crypto_hash_sha512_update(&hs, &SUITE, 1);
+        crypto_hash_sha512_update(&hs, &ONE, 1);
+        crypto_hash_sha512_update(&hs, Y_string, 32);
+        crypto_hash_sha512_update(&hs, alpha, alphalen);
         /* r = first 32 bytes of SHA512(suite || 0x01 || Y || alpha) */
         crypto_hash_sha512_update(&hs, &value, 1);
         crypto_hash_sha512_final(&hs, r_string);
         r_string[31] &= 0x7f; /* clear sign bit */
-        value += value;
+        value += ONE;
         check = ge25519_frombytes(&p3, r_string);
     }
 
