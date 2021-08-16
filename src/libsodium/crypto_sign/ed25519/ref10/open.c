@@ -64,52 +64,32 @@ _crypto_sign_ed25519_verify_detached(const unsigned char *sig,
     crypto_hash_sha512_final(&hs, h);
     sc25519_reduce(h);
 
-    printf("libsodium: ");
-    for (int i = 0; i<32; i++) {
-        printf("%c", h[i]);
-    }
-    printf("\n");
-
     ge25519_double_scalarmult_vartime(&R, h, &A, sig + 32);
     ge25519_tobytes(rcheck, &R);
 
-    ge25519_p3               new_R, new_Sig;
-    unsigned char new_sig_bytes[32];
-    ge25519_frombytes(&new_R, rcheck);
-    multiply_by_cofactor(&new_R);
-    ge25519_frombytes(&new_Sig, sig);
-    multiply_by_cofactor(&new_Sig);
-
-    ge25519_p3_tobytes(rcheck, &new_R);
-    ge25519_p3_tobytes(new_sig_bytes, &new_Sig);
-
-    return crypto_verify_32(rcheck, new_sig_bytes) | (-(rcheck == new_sig_bytes)) |
-           sodium_memcmp(new_sig_bytes, rcheck, 32);
+    return crypto_verify_32(rcheck, sig) | (-(rcheck == sig)) |
+           sodium_memcmp(sig, rcheck, 32);
 }
 
 /*
- * Given a ristretto pk and signature, it returns the canonical representation (prime subgroup)
- * of the corresponding edwards points.
+ * Given a ristretto point, this function returns the canonical representation (prime subgroup)
+ * of the corresponding edwards point.
+ *
+ * This function must only be used in the context of Musig2 signatures that need to be verified
+ * by the strict libsodium verification equation.
  */
-int crypto_sign_ed25519_prepare_sig_and_pk(
-        unsigned char *ge25519_pk,
-        unsigned char *ge25519_announcement,
-        unsigned char *ristretto255_pk,
-        unsigned char *ristretto255_announcement) {
+int crypto_sign_map_ristretto_prime_subgroup(
+        unsigned char *ge25519_point,
+        unsigned char *ristretto255_point) {
 
-    ge25519_p3     pk, pk_torsion_safe, announcement, announcement_torsion_safe;
-    if (ristretto255_frombytes(&pk, ristretto255_pk) != 0) {
-    return -1;
-    }
-    if (ristretto255_frombytes(&announcement, ristretto255_announcement) != 0) {
+    ge25519_p3     point, point_torsion_safe;
+    if (ristretto255_frombytes(&point, ristretto255_point) != 0) {
     return -1;
     }
 
-//    mul_torsion_safe(&pk_torsion_safe, &pk);
-//    mul_torsion_safe(&announcement_torsion_safe, &announcement);
+    mul_torsion_safe(&point_torsion_safe, &point);
 
-    ge25519_p3_tobytes(ge25519_pk, &pk);
-    ge25519_p3_tobytes(ge25519_announcement, &announcement);
+    ge25519_p3_tobytes(ge25519_point, &point_torsion_safe);
 
     return 0;
 }

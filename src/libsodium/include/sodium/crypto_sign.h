@@ -50,11 +50,9 @@ SODIUM_EXPORT
 const char *crypto_sign_primitive(void);
 
 SODIUM_EXPORT
-int prepare_sig_and_pk(
-        unsigned char *ge25519_pk,
-        unsigned char *ge25519_announcement,
-        unsigned char *ristretto255_pk,
-        unsigned char *ristretto255_announcement
+int map_ristretto_prime_subgroup(
+        unsigned char *ge25519_point,
+        unsigned char *ristretto255_point
 );
 
 SODIUM_EXPORT
@@ -90,11 +88,9 @@ int crypto_sign_verify_detached(const unsigned char *sig,
             __attribute__ ((warn_unused_result)) __attribute__ ((nonnull(1, 4)));
 
 SODIUM_EXPORT
-int crypto_sign_ed25519_prepare_sig_and_pk(
-        unsigned char *ge25519_pk,
-        unsigned char *ge25519_announcement,
-        unsigned char *ristretto255_pk,
-        unsigned char *ristretto255_announcement);
+int crypto_sign_map_ristretto_prime_subgroup(
+        unsigned char *ge25519_point,
+        unsigned char *ristretto255_point);
 
 SODIUM_EXPORT
 int crypto_sign_init(crypto_sign_state *state);
