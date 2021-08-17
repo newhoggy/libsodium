@@ -118,5 +118,5 @@ int map_ristretto_prime_subgroup(
         unsigned char *ge25519_point,
         unsigned char *ristretto255_point
 ) {
-    crypto_sign_map_ristretto_prime_subgroup(ge25519_point, ristretto255_point);
+    return crypto_sign_map_ristretto_prime_subgroup(ge25519_point, ristretto255_point);
 }

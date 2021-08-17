@@ -2,7 +2,6 @@
 #include <limits.h>
 #include <stdint.h>
 #include <string.h>
-#include <stdio.h>
 
 #include "crypto_hash_sha512.h"
 #include "crypto_sign_ed25519.h"
@@ -10,22 +9,6 @@
 #include "sign_ed25519_ref10.h"
 #include "private/ed25519_ref10.h"
 #include "utils.h"
-
-static void
-multiply_by_cofactor(ge25519_p3 *point) {
-    ge25519_cached tmp_point;
-    ge25519_p1p1   tmp2_point;
-
-    ge25519_p3_to_cached(&tmp_point, point);     /* tmp = input */
-    ge25519_add(&tmp2_point, point, &tmp_point); /* tmp2 = 2*input */
-    ge25519_p1p1_to_p3(point, &tmp2_point);      /* point = 2*input */
-    ge25519_p3_to_cached(&tmp_point, point);     /* tmp = 2*input */
-    ge25519_add(&tmp2_point, point, &tmp_point); /* tmp2 = 4*input */
-    ge25519_p1p1_to_p3(point, &tmp2_point);      /* point = 4*input */
-    ge25519_p3_to_cached(&tmp_point, point);     /* tmp = 4*input */
-    ge25519_add(&tmp2_point, point, &tmp_point); /* tmp2 = 8*input */
-    ge25519_p1p1_to_p3(point, &tmp2_point);      /* point = 8*input */
-}
 
 int
 _crypto_sign_ed25519_verify_detached(const unsigned char *sig,
